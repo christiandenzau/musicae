@@ -88,7 +88,7 @@ class PlaybackManager: NSObject, ObservableObject {
     
     private let libraryManager: LibraryManager
     private let playlistManager: PlaylistManager
-    // The single Petrichor-side Now Playing owner (info tile + remote commands)
+    // The single Musicae-side Now Playing owner (info tile + remote commands)
     // for both engines. For 1.6, Crescendo publishes neither (NowPlayingManager
     // owns the tile so the restore-resume anchor stays correct); Crescendo takes
     // over Now Playing in 1.7 when SFB is removed.
@@ -334,7 +334,7 @@ class PlaybackManager: NSObject, ObservableObject {
     }
 
     /// Wires the system remote command center (lock screen / Control Center) to
-    /// this manager. PlaybackManager owns the single Petrichor-side Now Playing
+    /// this manager. PlaybackManager owns the single Musicae-side Now Playing
     /// path for both engines in 1.6.
     func connectRemoteCommandCenter() {
         nowPlayingManager.connectRemoteCommandCenter(
@@ -518,7 +518,7 @@ class PlaybackManager: NSObject, ObservableObject {
     }
 
     /// Promotes the primed next track to current after the engine gaplessly
-    /// advanced into it. The audio is already playing; this just syncs Petrichor's
+    /// advanced into it. The audio is already playing; this just syncs Musicae's
     /// queue state, bookkeeping, and re-primes the following track.
     private func handleGaplessAdvance(to pending: PendingNext) {
         restoredUITrack = nil

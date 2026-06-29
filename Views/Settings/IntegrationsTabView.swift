@@ -127,7 +127,7 @@ struct IntegrationsTabView: View {
                     }
                     .buttonStyle(.plain)
                     .popover(isPresented: $showLoveSyncInfo, arrowEdge: .trailing) {
-                        Text("Tracks you favorite in Petrichor will be loved on Last.fm. Loved tracks on Last.fm won't sync back to Petrichor.")
+                        Text("Tracks you favorite in Musicae will be loved on Last.fm. Loved tracks on Last.fm won't sync back to Musicae.")
                             .font(.system(size: 12))
                             .padding(10)
                             .frame(width: 220)

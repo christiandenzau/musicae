@@ -1,7 +1,7 @@
 //
 // DatabaseMigration.swift
 //
-// This file contains the database migration infrastructure for Petrichor
+// This file contains the database migration infrastructure for Musicae
 // using GRDB's built-in migration system.
 //
 

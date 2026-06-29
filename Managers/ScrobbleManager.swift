@@ -69,7 +69,7 @@ class ScrobbleManager: ObservableObject {
             return nil
         }
         
-        let callbackURL = "petrichor://lastfm-callback"
+        let callbackURL = "musicae://lastfm-callback"
         // Build authorization URL with API key and callback
         let authURLString = "\(LastFM.authURL)?api_key=\(apiKey)&cb=\(callbackURL)"
         

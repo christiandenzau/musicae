@@ -328,7 +328,7 @@ private final class LogFileManager {
     private let maxLogAge: TimeInterval = 7 * 24 * 60 * 60 // 7 days
     private let logFileName: String = {
         let bundleID = Bundle.main.bundleIdentifier ?? About.bundleIdentifier
-        return bundleID.hasSuffix(".debug") ? "petrichor-debug.log" : "petrichor.log"
+        return bundleID.hasSuffix(".debug") ? "musicae-debug.log" : "musicae.log"
     }()
     
     private var logFileURL: URL? {

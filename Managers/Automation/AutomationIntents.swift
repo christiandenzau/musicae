@@ -15,7 +15,7 @@ import Foundation
 
 struct PlayPauseIntent: AppIntent {
     static var title: LocalizedStringResource = "Play or Pause"
-    static var description = IntentDescription("Toggles playback in Petrichor.")
+    static var description = IntentDescription("Toggles playback in Musicae.")
     static var openAppWhenRun = false
 
     @MainActor
@@ -27,7 +27,7 @@ struct PlayPauseIntent: AppIntent {
 
 struct PlayIntent: AppIntent {
     static var title: LocalizedStringResource = "Play"
-    static var description = IntentDescription("Resumes playback in Petrichor.")
+    static var description = IntentDescription("Resumes playback in Musicae.")
     static var openAppWhenRun = false
 
     @MainActor
@@ -39,7 +39,7 @@ struct PlayIntent: AppIntent {
 
 struct PauseIntent: AppIntent {
     static var title: LocalizedStringResource = "Pause"
-    static var description = IntentDescription("Pauses playback in Petrichor.")
+    static var description = IntentDescription("Pauses playback in Musicae.")
     static var openAppWhenRun = false
 
     @MainActor
@@ -51,7 +51,7 @@ struct PauseIntent: AppIntent {
 
 struct NextTrackIntent: AppIntent {
     static var title: LocalizedStringResource = "Next Track"
-    static var description = IntentDescription("Skips to the next track in Petrichor.")
+    static var description = IntentDescription("Skips to the next track in Musicae.")
     static var openAppWhenRun = false
 
     @MainActor
@@ -63,7 +63,7 @@ struct NextTrackIntent: AppIntent {
 
 struct PreviousTrackIntent: AppIntent {
     static var title: LocalizedStringResource = "Previous Track"
-    static var description = IntentDescription("Returns to the previous track in Petrichor.")
+    static var description = IntentDescription("Returns to the previous track in Musicae.")
     static var openAppWhenRun = false
 
     @MainActor
@@ -135,7 +135,7 @@ struct SetVolumeIntent: AppIntent {
 
 struct ToggleShuffleIntent: AppIntent {
     static var title: LocalizedStringResource = "Toggle Shuffle"
-    static var description = IntentDescription("Turns shuffle on or off in Petrichor.")
+    static var description = IntentDescription("Turns shuffle on or off in Musicae.")
     static var openAppWhenRun = false
 
     @MainActor
@@ -147,7 +147,7 @@ struct ToggleShuffleIntent: AppIntent {
 
 struct SetShuffleIntent: AppIntent {
     static var title: LocalizedStringResource = "Set Shuffle"
-    static var description = IntentDescription("Enables or disables shuffle in Petrichor.")
+    static var description = IntentDescription("Enables or disables shuffle in Musicae.")
     static var openAppWhenRun = false
 
     @Parameter(title: "Shuffle Enabled")
@@ -162,7 +162,7 @@ struct SetShuffleIntent: AppIntent {
 
 struct SetRepeatModeIntent: AppIntent {
     static var title: LocalizedStringResource = "Set Repeat Mode"
-    static var description = IntentDescription("Sets the repeat mode in Petrichor.")
+    static var description = IntentDescription("Sets the repeat mode in Musicae.")
     static var openAppWhenRun = false
 
     @Parameter(title: "Repeat Mode")
@@ -177,7 +177,7 @@ struct SetRepeatModeIntent: AppIntent {
 
 struct ToggleFavoriteIntent: AppIntent {
     static var title: LocalizedStringResource = "Toggle Favorite for Current Track"
-    static var description = IntentDescription("Favorites or unfavorites the current track in Petrichor.")
+    static var description = IntentDescription("Favorites or unfavorites the current track in Musicae.")
     static var openAppWhenRun = false
 
     @MainActor
@@ -191,7 +191,7 @@ struct ToggleFavoriteIntent: AppIntent {
 
 struct CurrentTrackIntent: AppIntent {
     static var title: LocalizedStringResource = "Get Current Track"
-    static var description = IntentDescription("Returns the track currently playing in Petrichor.")
+    static var description = IntentDescription("Returns the track currently playing in Musicae.")
     static var openAppWhenRun = false
 
     @MainActor
@@ -204,7 +204,7 @@ struct CurrentTrackIntent: AppIntent {
 
 struct PlayArtistIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Artist"
-    static var description = IntentDescription("Plays songs by an artist in Petrichor.")
+    static var description = IntentDescription("Plays songs by an artist in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Artist")
@@ -219,7 +219,7 @@ struct PlayArtistIntent: AppIntent {
 
 struct PlayAlbumIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Album"
-    static var description = IntentDescription("Plays an album in Petrichor.")
+    static var description = IntentDescription("Plays an album in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Album")
@@ -234,7 +234,7 @@ struct PlayAlbumIntent: AppIntent {
 
 struct PlayAlbumArtistIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Album Artist"
-    static var description = IntentDescription("Plays songs by an album artist in Petrichor.")
+    static var description = IntentDescription("Plays songs by an album artist in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Album Artist")
@@ -249,7 +249,7 @@ struct PlayAlbumArtistIntent: AppIntent {
 
 struct PlayComposerIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Composer"
-    static var description = IntentDescription("Plays songs by a composer in Petrichor.")
+    static var description = IntentDescription("Plays songs by a composer in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Composer")
@@ -264,7 +264,7 @@ struct PlayComposerIntent: AppIntent {
 
 struct PlayGenreIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Genre"
-    static var description = IntentDescription("Plays songs of a genre in Petrichor.")
+    static var description = IntentDescription("Plays songs of a genre in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Genre")
@@ -279,7 +279,7 @@ struct PlayGenreIntent: AppIntent {
 
 struct PlayDecadeIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Decade"
-    static var description = IntentDescription("Plays songs from a decade in Petrichor.")
+    static var description = IntentDescription("Plays songs from a decade in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Decade")
@@ -294,7 +294,7 @@ struct PlayDecadeIntent: AppIntent {
 
 struct PlayYearIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Year"
-    static var description = IntentDescription("Plays songs from a year in Petrichor.")
+    static var description = IntentDescription("Plays songs from a year in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Year")
@@ -309,7 +309,7 @@ struct PlayYearIntent: AppIntent {
 
 struct PlayPlaylistIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Playlist"
-    static var description = IntentDescription("Plays a playlist in Petrichor.")
+    static var description = IntentDescription("Plays a playlist in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Playlist")
@@ -326,7 +326,7 @@ struct PlayPlaylistIntent: AppIntent {
 
 struct AddAlbumToQueueIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Album to Queue"
-    static var description = IntentDescription("Adds an album to the end of the queue in Petrichor.")
+    static var description = IntentDescription("Adds an album to the end of the queue in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Album")
@@ -341,7 +341,7 @@ struct AddAlbumToQueueIntent: AppIntent {
 
 struct PlayAlbumNextIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Album Next"
-    static var description = IntentDescription("Queues an album to play next in Petrichor.")
+    static var description = IntentDescription("Queues an album to play next in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Album")
@@ -356,7 +356,7 @@ struct PlayAlbumNextIntent: AppIntent {
 
 struct AddPlaylistToQueueIntent: AppIntent {
     static var title: LocalizedStringResource = "Add Playlist to Queue"
-    static var description = IntentDescription("Adds a playlist to the end of the queue in Petrichor.")
+    static var description = IntentDescription("Adds a playlist to the end of the queue in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Playlist")
@@ -371,7 +371,7 @@ struct AddPlaylistToQueueIntent: AppIntent {
 
 struct PlayPlaylistNextIntent: AppIntent {
     static var title: LocalizedStringResource = "Play Playlist Next"
-    static var description = IntentDescription("Queues a playlist to play next in Petrichor.")
+    static var description = IntentDescription("Queues a playlist to play next in Musicae.")
     static var openAppWhenRun = true
 
     @Parameter(title: "Playlist")

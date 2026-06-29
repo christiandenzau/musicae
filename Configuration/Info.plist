@@ -29,10 +29,10 @@
     <array>
         <dict>
             <key>CFBundleURLName</key>
-            <string>org.Petrichor.callback</string>
+            <string>org.Musicae.callback</string>
             <key>CFBundleURLSchemes</key>
             <array>
-                <string>petrichor</string>
+                <string>musicae</string>
             </array>
         </dict>
     </array>
@@ -50,15 +50,12 @@
     <true/>
     
     <!-- Sparkle Configuration -->
-    <key>SUPublicEDKey</key>
-    <string>YPobXg0pi8vxrnsOk3ApMu2QF46GSFW68vwXjzuNEz4=</string>
-    <key>SUFeedURL</key>
-    <string>https://kushalpandya.github.io/Petrichor/appcast.xml</string>
+    <!-- Auto-update disabled for the Musicae fork: no SUFeedURL/SUPublicEDKey set,
+         so the app never pulls updates from the upstream Petrichor appcast.
+         Configure your own feed and EdDSA key here to re-enable updates. -->
     <key>SUEnableAutomaticChecks</key>
-    <true/>
-    <key>SUEnableInstallerLauncherService</key>
-    <true/>
-    
+    <false/>
+
     <!--  Last.fm Scrobble  -->
     <key>LASTFM_API_KEY</key>
     <string>$(LASTFM_API_KEY)</string>

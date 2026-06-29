@@ -108,7 +108,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SPUUpdaterDelegate {
         Logger.installCrashHandler()
         
         // Log startup information
-        Logger.info("Petrichor starting up...")
+        Logger.info("Musicae starting up...")
         Logger.info("Log file location: \(Logger.logFileURL?.path ?? "unknown")")
         
         // For debug builds, you might want more verbose logging

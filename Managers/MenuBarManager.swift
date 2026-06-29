@@ -84,7 +84,7 @@ class MenuBarManager: NSObject {
         // Use play/pause circle icons based on playback state
         let iconName = playbackManager.isPlaying ? Icons.playCircleFill : Icons.pauseCircleFill
 
-        if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: "Petrichor") {
+        if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: "Musicae") {
             image.size = NSSize(width: 18, height: 18)
             image.isTemplate = true
             button.image = image
@@ -176,7 +176,7 @@ class MenuBarManager: NSObject {
 
         // Show App Window
         let showWindowItem = NSMenuItem(
-            title: String(localized: "Show Petrichor"),
+            title: String(localized: "Show Musicae"),
             action: #selector(showMainWindow),
             keyEquivalent: ""
         )
@@ -193,7 +193,7 @@ class MenuBarManager: NSObject {
 
         // Quit
         let quitItem = NSMenuItem(
-            title: String(localized: "Quit Petrichor"),
+            title: String(localized: "Quit Musicae"),
             action: #selector(quitApp),
             keyEquivalent: ""
         )

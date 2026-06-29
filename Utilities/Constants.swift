@@ -93,9 +93,10 @@ enum Icons {
 // MARK: - About
 
 enum About {
-    static let bundleIdentifier = "org.Petrichor"
-    static let appTitle = "Petrichor"
+    static let bundleIdentifier = "org.Musicae"
+    static let appTitle = "Musicae"
     static let appSubtitle = "An offline macOS music player"
+    // Musicae is a fork of Petrichor; these links point to the upstream project.
     static let appWebsite = "https://github.com/kushalpandya/Petrichor"
     static let appWiki = "https://github.com/kushalpandya/Petrichor/wiki"
     static let appAcknowledgements = "https://github.com/kushalpandya/Petrichor/blob/main/ACKNOWLEDGEMENTS.md"
@@ -108,7 +109,7 @@ enum About {
 // MARK: - Audio File Formats
 
 enum AudioFormat {
-    // The set of file extensions Petrichor imports and plays. This is the app's
+    // The set of file extensions Musicae imports and plays. This is the app's
     // supported list and stays the same regardless of the active engine.
     static let supportedExtensions = [
         // Core Audio formats

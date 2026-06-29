@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# build-installer.sh - Build and create a signed DMG installer for Petrichor
+# build-installer.sh - Build and create a signed DMG installer for Musicae
 
 set -e  # Exit on error
 
 # Configuration
-APP_NAME="Petrichor"
-SCHEME="Petrichor"
+APP_NAME="Musicae"
+SCHEME="Musicae"
 CONFIGURATION="Release"
-PROJECT="Petrichor.xcodeproj"
-NOTARY_PROFILE="Petrichor"
+PROJECT="Musicae.xcodeproj"
+NOTARY_PROFILE="Musicae"
 
 # Read from environment variables
-TEAM_ID="${PETRICHOR_TEAM_ID:-}"
-DEVELOPER_ID="${PETRICHOR_DEVELOPER_ID:-}"
+TEAM_ID="${MUSICAE_TEAM_ID:-}"
+DEVELOPER_ID="${MUSICAE_DEVELOPER_ID:-}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -335,8 +335,8 @@ print_bypass_instructions() {
         echo -e "${GREEN}To install:${NC}"
         echo -e "  1. Right-click the DMG → Open"
         echo -e "  2. Click 'Open' in the warning dialog"
-        echo -e "  3. Drag Petrichor to Applications"
-        echo -e "  4. Right-click Petrichor.app → Open"
+        echo -e "  3. Drag Musicae to Applications"
+        echo -e "  4. Right-click Musicae.app → Open"
         echo -e "  5. Click 'Open' in the warning dialog\n"
     else
         # Instructions for free account development build
@@ -351,8 +351,8 @@ print_bypass_instructions() {
         
         echo -e "${GREEN}To install:${NC}"
         echo -e "  1. Open the DMG"
-        echo -e "  2. Drag Petrichor to Applications"
-        echo -e "  3. Open Petrichor from Applications"
+        echo -e "  2. Drag Musicae to Applications"
+        echo -e "  3. Open Musicae from Applications"
         echo -e "  4. If blocked, go to System Settings → Privacy & Security"
         echo -e "  5. Click 'Open Anyway'\n"
         
@@ -391,12 +391,12 @@ if [ "$BYPASS_NOTARY" = false ]; then
         error "Missing required environment variables for notarization!"
         echo ""
         echo "Please set the following environment variables:"
-        echo "  export PETRICHOR_TEAM_ID=\"your-team-id\""
-        echo "  export PETRICHOR_DEVELOPER_ID=\"Developer ID Application: Your Name (TEAMID)\""
+        echo "  export MUSICAE_TEAM_ID=\"your-team-id\""
+        echo "  export MUSICAE_DEVELOPER_ID=\"Developer ID Application: Your Name (TEAMID)\""
         echo ""
         echo "Example:"
-        echo "  export PETRICHOR_TEAM_ID=\"ABCD1234XY\""
-        echo "  export PETRICHOR_DEVELOPER_ID=\"Developer ID Application: John Doe (ABCD1234XY)\""
+        echo "  export MUSICAE_TEAM_ID=\"ABCD1234XY\""
+        echo "  export MUSICAE_DEVELOPER_ID=\"Developer ID Application: John Doe (ABCD1234XY)\""
         echo ""
         echo "Or run with --bypass-notary to skip notarization"
         exit 1

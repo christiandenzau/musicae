@@ -70,7 +70,7 @@ class NowPlayingManager {
         return artwork
     }
 
-    /// The remote commands Petrichor handles. Single source of truth for remote
+    /// The remote commands Musicae handles. Single source of truth for remote
     /// command teardown and registration.
     private var managedCommands: [MPRemoteCommand] {
         let center = MPRemoteCommandCenter.shared()

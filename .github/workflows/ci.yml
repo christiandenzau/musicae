@@ -38,8 +38,8 @@ env:
   # Pinned and bumped deliberately; matches the local/ship toolchain. The
   # SwiftLint image tag in the lint job is the single lint-version pin.
   XCODE_VERSION: '26.5'
-  SCHEME: 'Petrichor'
-  PROJECT: 'Petrichor.xcodeproj'
+  SCHEME: 'Musicae'
+  PROJECT: 'Musicae.xcodeproj'
 
 jobs:
   # Fast, free Linux gate via the official SwiftLint container. Runs first; the

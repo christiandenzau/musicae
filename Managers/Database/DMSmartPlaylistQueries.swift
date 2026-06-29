@@ -1,6 +1,6 @@
 //
 //  DatabaseManager class extension
-//  Petrichor
+//  Musicae
 //
 //  Smart playlist query builder for fetching tracks from database
 //  based on Smart Playlist criteria

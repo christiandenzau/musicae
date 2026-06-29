@@ -1,13 +1,13 @@
 # Localization
 
-Petrichor uses Apple's **String Catalog** (`Resources/Localizable.xcstrings`) for
+Musicae uses Apple's **String Catalog** (`Resources/Localizable.xcstrings`) for
 localization. The app ships in English and automatically follows the user's macOS
 system language when a matching localization is available, falling back to English
 otherwise. Adding a new language requires **no Swift code changes**.
 
 ## Adding a translation
 
-1. Open `Petrichor.xcodeproj` in Xcode and select
+1. Open `Musicae.xcodeproj` in Xcode and select
    `Resources/Localizable.xcstrings` in the navigator.
 2. Click the **+** button at the bottom of the language list and pick your
    language. Xcode adds it to the project's known regions automatically.
@@ -20,7 +20,7 @@ otherwise. Adding a new language requires **no Swift code changes**.
    `other`, and more depending on the language). Fill in each plural form your
    language needs — Xcode shows the categories that apply.
 5. **Don't translate** brand names and proper nouns (e.g. `Last.fm`,
-   `MusicBrainz`, `Petrichor`). Right-click such a string and choose
+   `MusicBrainz`, `Musicae`). Right-click such a string and choose
    _Mark as "Don't Translate"_ if it isn't already.
 6. Build and run with your language selected (see below) to sanity-check layout
    and truncation, then open a pull request.

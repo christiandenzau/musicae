@@ -1,6 +1,6 @@
 //
 //  ArtistBioManager.swift
-//  Petrichor
+//  Musicae
 //
 //  Handles fetching artist images (MusicBrainz/Wikidata, TMDB) and bios (Last.fm)
 //  from online sources and storing them in the database.

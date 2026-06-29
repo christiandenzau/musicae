@@ -441,7 +441,7 @@ struct LibraryTabView: View {
     private func showRestartAlert() {
         let alert = NSAlert()
         alert.messageText = String(localized: "Restart Required")
-        alert.informativeText = String(localized: "App preferences have been reset. Please restart Petrichor for changes to take full effect.")
+        alert.informativeText = String(localized: "App preferences have been reset. Please restart Musicae for changes to take full effect.")
         alert.alertStyle = .informational
         alert.addButton(withTitle: String(localized: "Quit Now"))
         alert.addButton(withTitle: String(localized: "Later"))
