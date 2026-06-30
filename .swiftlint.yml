@@ -1,4 +1,4 @@
-# SwiftLint configuration for Petrichor
+# SwiftLint configuration for Musicae
 
 # Paths to include
 included:
@@ -7,7 +7,7 @@ included:
   - Models
   - Views
   - Utilities
-  - PetrichorApp.swift
+  - MusicaeApp.swift
 
 # Paths to exclude
 excluded:
@@ -17,7 +17,7 @@ excluded:
   - DerivedData
   - ${PWD}/.build
   - ${PWD}/DerivedData
-  - ${PWD}/Petrichor.xcodeproj
+  - ${PWD}/Musicae.xcodeproj
   - ${PWD}/Resources
   - ${PWD}/Configuration
 

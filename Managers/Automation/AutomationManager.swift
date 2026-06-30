@@ -1,7 +1,7 @@
 //
 // AutomationManager class
 //
-// Process-wide command facade that exposes Petrichor's playback to system
+// Process-wide command facade that exposes Musicae's playback to system
 // automation (App Intents / Shortcuts / Siri). The App Intents adapters call
 // into this single surface instead of touching managers directly; it resolves
 // the live managers off `AppCoordinator.shared` and runs every mutation on the

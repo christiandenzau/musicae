@@ -1,6 +1,6 @@
 //
 //  LyricsManager.swift
-//  Petrichor
+//  Musicae
 //
 //  Handles fetching lyrics from online sources (LRCLIB) and coordinating
 //  with database storage for caching.

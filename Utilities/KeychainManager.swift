@@ -3,7 +3,7 @@ import Security
 
 enum KeychainManager {
     enum Keys {
-        static let lastfmSessionKey = "org.Petrichor.lastfm.sessionKey"
+        static let lastfmSessionKey = "org.Musicae.lastfm.sessionKey"
     }
     
     // MARK: - Save

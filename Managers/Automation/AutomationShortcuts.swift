@@ -10,12 +10,12 @@
 //
 // Parameterized phrases (e.g. "Play <artist>") match fairly literally, so each
 // content intent donates a few natural variants. `\(.applicationName)` resolves
-// to the app's display name - "Petrichor Dev" in Debug, "Petrichor" in Release.
+// to the app's display name - "Musicae Dev" in Debug, "Musicae" in Release.
 //
 
 import AppIntents
 
-struct PetrichorShortcuts: AppShortcutsProvider {
+struct MusicaeShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
             intent: PlayPauseIntent(),

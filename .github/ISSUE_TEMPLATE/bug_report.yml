@@ -1,5 +1,5 @@
 name: Bug Report
-description: Report a bug in Petrichor
+description: Report a bug in Musicae
 title: "Bug: "
 labels: ["bug"]
 body:
@@ -45,7 +45,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: Petrichor Version
+      label: Musicae Version
       description: Check About window for version
       placeholder: "v1.0.0-beta.3"
     validations:
@@ -55,7 +55,7 @@ body:
     id: macos
     attributes:
       label: macOS Version
-      description: Petrichor requires macOS 14.0 or higher
+      description: Musicae requires macOS 14.0 or higher
       options:
         - macOS 26 (Tahoe)
         - macOS 15 (Sequoia)
@@ -70,11 +70,11 @@ body:
       description: |
         **For regular bugs - attach app logs:**
         - **If app is running:** Settings → About → App Data (opens Finder with Logs folder)
-        - **If app won't launch:** Navigate to `~/Library/Containers/org.Petrichor/Data/Library/Application Support/org.Petrichor/Logs/`
+        - **If app won't launch:** Navigate to `~/Library/Containers/org.Musicae/Data/Library/Application Support/org.Musicae/Logs/`
         
         **For crashes - also include crash logs:**
-        - Open Console app → Crash Reports → Find Petrichor crash logs
-        - Or navigate to `~/Library/Logs/DiagnosticReports/` and find Petrichor crash reports
+        - Open Console app → Crash Reports → Find Musicae crash logs
+        - Or navigate to `~/Library/Logs/DiagnosticReports/` and find Musicae crash reports
         
         Attach relevant files or paste error messages here.
       render: shell

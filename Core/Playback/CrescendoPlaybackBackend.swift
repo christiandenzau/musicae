@@ -70,7 +70,7 @@ final class CrescendoPlaybackBackend: PlaybackBackend {
             let bridge = CrescendoDelegateBridge(owner: self)
             self.delegateBridge = bridge
             player.delegate = bridge
-            // For the 1.6 co-existence release, Petrichor's NowPlayingManager owns
+            // For the 1.6 co-existence release, Musicae's NowPlayingManager owns
             // the system Now Playing tile and remote commands for BOTH engines, so
             // Crescendo publishes neither. Crescendo takes over Now Playing in 1.7
             // when SFB is removed (and its restore-resume tile-anchor bug is fixed).

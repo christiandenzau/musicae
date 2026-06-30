@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "550F4A0D2DB45B1A005F794E"
-               BuildableName = "Petrichor.app"
-               BlueprintName = "Petrichor"
-               ReferencedContainer = "container:Petrichor.xcodeproj">
+               BuildableName = "Musicae.app"
+               BlueprintName = "Musicae"
+               ReferencedContainer = "container:Musicae.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "550F4A0D2DB45B1A005F794E"
-            BuildableName = "Petrichor.app"
-            BlueprintName = "Petrichor"
-            ReferencedContainer = "container:Petrichor.xcodeproj">
+            BuildableName = "Musicae.app"
+            BlueprintName = "Musicae"
+            ReferencedContainer = "container:Musicae.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "550F4A0D2DB45B1A005F794E"
-            BuildableName = "Petrichor.app"
-            BlueprintName = "Petrichor"
-            ReferencedContainer = "container:Petrichor.xcodeproj">
+            BuildableName = "Musicae.app"
+            BlueprintName = "Musicae"
+            ReferencedContainer = "container:Musicae.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

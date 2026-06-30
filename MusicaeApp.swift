@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct PetrichorApp: App {
+struct MusicaeApp: App {
     @StateObject private var appCoordinator: AppCoordinator
     @NSApplicationDelegateAdaptor(AppDelegate.self)
     var appDelegate
@@ -81,7 +81,7 @@ struct PetrichorApp: App {
     }
 }
 
-extension PetrichorApp {
+extension MusicaeApp {
     // MARK: - App Menu Commands
     
     @CommandsBuilder
@@ -110,9 +110,9 @@ extension PetrichorApp {
             )
         } label: {
             if #available(macOS 26.0, *) {
-                Label("About Petrichor", systemImage: Icons.infoCircle)
+                Label("About Musicae", systemImage: Icons.infoCircle)
             } else {
-                Text("About Petrichor")
+                Text("About Musicae")
             }
         }
     }
@@ -696,11 +696,11 @@ extension PetrichorApp {
         } label: {
             if #available(macOS 26.0, *) {
                 Label(
-                    "Petrichor User Guide",
+                    "Musicae User Guide",
                     systemImage: "book.pages"
                 )
             } else {
-                Text("Petrichor User Guide")
+                Text("Musicae User Guide")
             }
         }
         .keyboardShortcut("?", modifiers: .command)

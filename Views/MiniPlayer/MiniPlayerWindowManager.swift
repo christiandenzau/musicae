@@ -20,7 +20,7 @@ import AppKit
 final class MiniPlayerWindowManager: NSObject {
     static let shared = MiniPlayerWindowManager()
 
-    private static let frameAutosaveName = "PetrichorMiniPlayerWindow"
+    private static let frameAutosaveName = "MusicaeMiniPlayerWindow"
 
     private var window: NSWindow?
 

@@ -1,7 +1,14 @@
-<img width="170" src=".github/assets/DefaultAppIcon.png" alt="Petrichor App Icon" align="left"/>
+<!--
+  Musicae is a personal fork of Petrichor (https://github.com/kushalpandya/Petrichor)
+  by Kushal Pandya, used under the MIT License. Branding and bundle identity are
+  Musicae; badges, release links, Homebrew and screenshots below still point to the
+  upstream project. See ACKNOWLEDGEMENTS.md and LICENSE for attribution.
+-->
+
+<img width="170" src=".github/assets/DefaultAppIcon.png" alt="Musicae App Icon" align="left"/>
 
 <div>
-<h3>Petrichor</h3>
+<h3>Musicae</h3>
 <p>An offline music player for macOS</p>
 <a href="https://github.com/kushalpandya/Petrichor/releases/latest"><img src=".github/assets/macos_download.png" width="140" alt="Download for macOS"/></a>
 </div>
@@ -51,7 +58,7 @@
 - Works well with large libraries containing thousands of songs.
 - Last.fm scrobbling support
 
-💡 **Tip**: Petrichor relies heavily on tracks having good metadata for all its features to work well.
+💡 **Tip**: Musicae relies heavily on tracks having good metadata for all its features to work well.
 
 ### ⌛ Upcoming Features
 
@@ -74,7 +81,7 @@
 
 - Go to [Releases](https://github.com/kushalpandya/Petrichor/releases) and download the latest `.dmg`.
 - Open the it and drag the app icon into the Applications folder.
-- In Applications, right-click **Petrichor > Open**.
+- In Applications, right-click **Musicae > Open**.
 
 #### Homebrew
 
@@ -84,7 +91,7 @@ brew install --cask petrichor
 
 ### 🚀 Get Started
 
-[Petrichor User Guide](https://github.com/kushalpandya/Petrichor/wiki)
+[Musicae User Guide](https://github.com/kushalpandya/Petrichor/wiki)
 
 ### 📷 Screenshots
 
@@ -102,7 +109,7 @@ brew install --cask petrichor
 
 ### 🔒 Privacy & Data Access
 
-- Petrichor is sandboxed and notarized by Apple.
+- Musicae is sandboxed and notarized by Apple.
 - It has two permissions on macOS as follows;
   - **Read-write access**
     - To read and write into user-selected files and folders,
@@ -342,7 +349,7 @@ erDiagram
 
 ### Credits
 
-Petrichor wouldn't be possible without following open source projects!
+Musicae wouldn't be possible without following open source projects!
 
 - [SFBAudioEngine](https://github.com/sbooth/SFBAudioEngine)
 - [GRDB.swift](https://github.com/groue/GRDB.swift/)
@@ -352,7 +359,7 @@ Petrichor wouldn't be possible without following open source projects!
 
 - Make sure you’re running macOS 14 or later.
 - Install [Xcode](https://developer.apple.com/xcode/).
-- Clone the repository and open `Petrichor.xcodeproj`
+- Clone the repository and open `Musicae.xcodeproj`
 
 #### Build & Release
 
@@ -374,7 +381,7 @@ Thank you to all the sponsors for supporting Petrichor's development!
 
 ## 📝 License
 
-- Petrichor is licensed under [MIT](LICENSE)
+- Musicae is licensed under [MIT](LICENSE)
 - Core dependencies (SFBAudioEngine, GRDB, Sparkle) are licensed under MIT
 - Audio codec libraries (FLAC, Vorbis, Opus, etc.) are dynamically linked and use various open source licenses including GPL and LGPL
 

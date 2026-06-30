@@ -9,34 +9,34 @@
 /* Begin PBXBuildFile section */
 		552A58402EC0629A00F6D8C0 /* SFBAudioEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 552A583F2EC0629A00F6D8C0 /* SFBAudioEngine */; };
 		552CE3E52FE3263900A5C93D /* Crescendo in Frameworks */ = {isa = PBXBuildFile; productRef = 552CE3E42FE3263900A5C93D /* Crescendo */; };
-		5590877F2DE0C078009E7719 /* PetrichorApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5590877E2DE0C078009E7719 /* PetrichorApp.swift */; };
+		5590877F2DE0C078009E7719 /* MusicaeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5590877E2DE0C078009E7719 /* MusicaeApp.swift */; };
 		55B0DEC12DE3A58400A41ED9 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 55B0DEC02DE3A58400A41ED9 /* GRDB */; };
 		55D673CF2E42CEA50095A358 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 55D673CE2E42CEA50095A358 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		550F4A0E2DB45B1A005F794E /* Petrichor Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Petrichor Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		550F4A0E2DB45B1A005F794E /* Musicae Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Musicae Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		550F4A3F2DB4786F005F794E /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		55593A412DE019E400640247 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		55613A822E04A7230000E217 /* .swiftlint.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = .swiftlint.yml; sourceTree = "<group>"; };
-		5590877E2DE0C078009E7719 /* PetrichorApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PetrichorApp.swift; sourceTree = "<group>"; };
+		5590877E2DE0C078009E7719 /* MusicaeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicaeApp.swift; sourceTree = "<group>"; };
 		55FB816B2EC22E6E008321CA /* ACKNOWLEDGEMENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ACKNOWLEDGEMENTS.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		55789DCB2F8AACF300FB82A3 /* Exceptions for "Resources" folder in "Petrichor" target */ = {
+		55789DCB2F8AACF300FB82A3 /* Exceptions for "Resources" folder in "Musicae" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				known_artists_YYYYMMDD.txt,
 			);
-			target = 550F4A0D2DB45B1A005F794E /* Petrichor */;
+			target = 550F4A0D2DB45B1A005F794E /* Musicae */;
 		};
-		55B57E812E19E5E200E57EC3 /* Exceptions for "Scripts" folder in "Petrichor" target */ = {
+		55B57E812E19E5E200E57EC3 /* Exceptions for "Scripts" folder in "Musicae" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"build-installer.sh",
 			);
-			target = 550F4A0D2DB45B1A005F794E /* Petrichor */;
+			target = 550F4A0D2DB45B1A005F794E /* Musicae */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -69,7 +69,7 @@
 		55B57E742E19D73900E57EC3 /* Scripts */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				55B57E812E19E5E200E57EC3 /* Exceptions for "Scripts" folder in "Petrichor" target */,
+				55B57E812E19E5E200E57EC3 /* Exceptions for "Scripts" folder in "Musicae" target */,
 			);
 			path = Scripts;
 			sourceTree = "<group>";
@@ -87,7 +87,7 @@
 		55F38A842DF8F2FE0028843B /* Resources */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				55789DCB2F8AACF300FB82A3 /* Exceptions for "Resources" folder in "Petrichor" target */,
+				55789DCB2F8AACF300FB82A3 /* Exceptions for "Resources" folder in "Musicae" target */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -125,17 +125,17 @@
 				55613A822E04A7230000E217 /* .swiftlint.yml */,
 				55593A412DE019E400640247 /* README.md */,
 				55FB816B2EC22E6E008321CA /* ACKNOWLEDGEMENTS.md */,
-				5590877E2DE0C078009E7719 /* PetrichorApp.swift */,
-				550F4A0E2DB45B1A005F794E /* Petrichor Dev.app */,
+				5590877E2DE0C078009E7719 /* MusicaeApp.swift */,
+				550F4A0E2DB45B1A005F794E /* Musicae Dev.app */,
 			);
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		550F4A0D2DB45B1A005F794E /* Petrichor */ = {
+		550F4A0D2DB45B1A005F794E /* Musicae */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 550F4A1A2DB45B1B005F794E /* Build configuration list for PBXNativeTarget "Petrichor" */;
+			buildConfigurationList = 550F4A1A2DB45B1B005F794E /* Build configuration list for PBXNativeTarget "Musicae" */;
 			buildPhases = (
 				550F4A0A2DB45B1A005F794E /* Sources */,
 				550F4A0B2DB45B1A005F794E /* Frameworks */,
@@ -155,15 +155,15 @@
 				55F38A7E2DF8F2F30028843B /* Utilities */,
 				55F38A842DF8F2FE0028843B /* Resources */,
 			);
-			name = Petrichor;
+			name = Musicae;
 			packageProductDependencies = (
 				55B0DEC02DE3A58400A41ED9 /* GRDB */,
 				55D673CE2E42CEA50095A358 /* Sparkle */,
 				552A583F2EC0629A00F6D8C0 /* SFBAudioEngine */,
 				552CE3E42FE3263900A5C93D /* Crescendo */,
 			);
-			productName = Petrichor;
-			productReference = 550F4A0E2DB45B1A005F794E /* Petrichor Dev.app */;
+			productName = Musicae;
+			productReference = 550F4A0E2DB45B1A005F794E /* Musicae Dev.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -181,7 +181,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 550F4A092DB45B1A005F794E /* Build configuration list for PBXProject "Petrichor" */;
+			buildConfigurationList = 550F4A092DB45B1A005F794E /* Build configuration list for PBXProject "Musicae" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -201,7 +201,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				550F4A0D2DB45B1A005F794E /* Petrichor */,
+				550F4A0D2DB45B1A005F794E /* Musicae */,
 			);
 		};
 /* End PBXProject section */
@@ -221,7 +221,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5590877F2DE0C078009E7719 /* PetrichorApp.swift in Sources */,
+				5590877F2DE0C078009E7719 /* MusicaeApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -356,12 +356,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = Configuration/Petrichor.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Configuration/Musicae.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 999;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = B53W6J5RWK;
+				DEVELOPMENT_TEAM = S44V9L234G;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
@@ -378,16 +378,16 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Configuration/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Petrichor;
+				INFOPLIST_KEY_CFBundleDisplayName = Musicae;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = "Development Build";
 				"OTHER_CODE_SIGN_FLAGS[sdk=*]" = "--timestamp";
-				PRODUCT_BUNDLE_IDENTIFIER = org.Petrichor.debug;
-				PRODUCT_MODULE_NAME = Petrichor;
-				PRODUCT_NAME = "Petrichor Dev";
+				PRODUCT_BUNDLE_IDENTIFIER = org.Musicae.debug;
+				PRODUCT_MODULE_NAME = Musicae;
+				PRODUCT_NAME = "Musicae Dev";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				SUPPORTED_PLATFORMS = macosx;
@@ -404,13 +404,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = Configuration/Petrichor.entitlements;
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
+				CODE_SIGN_ENTITLEMENTS = Configuration/Musicae.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 152;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = "";
-				"DEVELOPMENT_TEAM[sdk=macosx*]" = B53W6J5RWK;
+				"DEVELOPMENT_TEAM[sdk=macosx*]" = S44V9L234G;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
@@ -427,14 +427,14 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Configuration/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Petrichor;
+				INFOPLIST_KEY_CFBundleDisplayName = Musicae;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = "Development Build";
 				"OTHER_CODE_SIGN_FLAGS[sdk=*]" = "--timestamp";
-				PRODUCT_BUNDLE_IDENTIFIER = org.Petrichor;
+				PRODUCT_BUNDLE_IDENTIFIER = org.Musicae;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				REGISTER_APP_GROUPS = YES;
@@ -448,7 +448,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		550F4A092DB45B1A005F794E /* Build configuration list for PBXProject "Petrichor" */ = {
+		550F4A092DB45B1A005F794E /* Build configuration list for PBXProject "Musicae" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				550F4A182DB45B1B005F794E /* Debug */,
@@ -457,7 +457,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		550F4A1A2DB45B1B005F794E /* Build configuration list for PBXNativeTarget "Petrichor" */ = {
+		550F4A1A2DB45B1B005F794E /* Build configuration list for PBXNativeTarget "Musicae" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				550F4A1B2DB45B1B005F794E /* Debug */,

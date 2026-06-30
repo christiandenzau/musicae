@@ -2,8 +2,8 @@
 // CrescendoMetadataReader
 //
 // The Crescendo-backed metadata reader. It owns the Crescendo import and maps
-// `CrescendoMetadata` onto Petrichor's `TrackMetadata`, so MetadataEngine stays
-// backend-agnostic. Note: this Petrichor type intentionally shares its name with
+// `CrescendoMetadata` onto Musicae's `TrackMetadata`, so MetadataEngine stays
+// backend-agnostic. Note: this Musicae type intentionally shares its name with
 // Crescendo's own `CrescendoMetadataReader` enum; the module's type is referenced
 // as `Crescendo.CrescendoMetadataReader` below to disambiguate.
 //
@@ -72,7 +72,7 @@ struct CrescendoMetadataReader: MetadataReader {
         }
         if source.sampleRate > 0 { metadata.sampleRate = source.sampleRate }
         if source.channelCount > 0 { metadata.channels = source.channelCount }
-        // Crescendo reports bitrate in bits/sec; Petrichor stores and displays
+        // Crescendo reports bitrate in bits/sec; Musicae stores and displays
         // kbps (as SFB/TagLib does), so convert.
         if let bitrate = source.bitrate, bitrate > 0 { metadata.bitrate = (bitrate + 500) / 1000 }
         if let bitDepth = source.bitDepth, bitDepth > 0 { metadata.bitDepth = bitDepth }

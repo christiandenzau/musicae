@@ -2,10 +2,10 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug Petrichor (LLDB)",
+      "name": "Debug Musicae (LLDB)",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/build/Debug/Petrichor.app/Contents/MacOS/Petrichor",
+      "program": "${workspaceFolder}/build/Debug/Musicae.app/Contents/MacOS/Musicae",
       "args": [],
       "cwd": "${workspaceFolder}",
       "preLaunchTask": "build-and-copy"

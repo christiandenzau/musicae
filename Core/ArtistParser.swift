@@ -25,7 +25,7 @@ enum ArtistParser {
     private static let safeSeparators = highConfidenceSeparators + ambiguousSeparators.filter { !unsafeSeparators.contains($0) }
 
     // MARK: - Caching
-    private static let cacheQueue = DispatchQueue(label: "org.Petrichor.artistparser.cache", attributes: .concurrent)
+    private static let cacheQueue = DispatchQueue(label: "org.Musicae.artistparser.cache", attributes: .concurrent)
     private static var parseCache = [String: [String]]()
     private static var normalizeCache = [String: String]()
 
@@ -42,7 +42,7 @@ enum ArtistParser {
 
     // Concurrent so that reads (`hasKnownArtists`, `isKnownArtist`) run in parallel during
     // a scan; load/unload mutate state behind a `.barrier` for exclusive access.
-    private static let knownArtistsQueue = DispatchQueue(label: "org.Petrichor.artistparser.knownArtists", attributes: .concurrent)
+    private static let knownArtistsQueue = DispatchQueue(label: "org.Musicae.artistparser.knownArtists", attributes: .concurrent)
 
     /// In-memory set of known artist names, loaded on-demand from bundled text file.
     private static var knownArtists = Set<String>()

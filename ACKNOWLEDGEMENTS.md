@@ -1,6 +1,8 @@
 # License & Acknowledgements
 
-Petrichor uses various open source software components. This document contains the required notices and license information for these components.
+Musicae is a fork of [Petrichor](https://github.com/kushalpandya/Petrichor) by Kushal Pandya, used under the MIT License (© 2025 Kushal Pandya). See the [LICENSE](LICENSE) file for the full notice.
+
+Musicae uses various open source software components. This document contains the required notices and license information for these components.
 
 ---
 
@@ -52,7 +54,7 @@ SOFTWARE.
 
 ## Audio Codec Libraries
 
-The following audio codec libraries are dynamically linked through SFBAudioEngine and are not distributed with Petrichor's source code. These libraries are used at runtime for decoding various audio formats.
+The following audio codec libraries are dynamically linked through SFBAudioEngine and are not distributed with Musicae's source code. These libraries are used at runtime for decoding various audio formats.
 
 ### FLAC (Free Lossless Audio Codec)
 
@@ -60,7 +62,7 @@ The following audio codec libraries are dynamically linked through SFBAudioEngin
 - **License**: BSD-3-Clause License
 - **Copyright**: Copyright (c) 2000-2009 Josh Coalson, Copyright (c) 2011-2023 Xiph.Org Foundation
 
-The FLAC library is licensed under the BSD 3-Clause License, which is permissive and compatible with Petrichor's MIT license.
+The FLAC library is licensed under the BSD 3-Clause License, which is permissive and compatible with Musicae's MIT license.
 
 ### Ogg Vorbis
 
@@ -80,7 +82,7 @@ The FLAC library is licensed under the BSD 3-Clause License, which is permissive
 - **License**: LGPL-2.1 or LGPL-3.0
 - **Copyright**: Copyright (c) 1999-2023 Erik de Castro Lopo and others
 
-This library is used for reading and writing various audio file formats. As it is dynamically linked and licensed under LGPL, Petrichor's MIT license remains unaffected.
+This library is used for reading and writing various audio file formats. As it is dynamically linked and licensed under LGPL, Musicae's MIT license remains unaffected.
 
 ### WavPack
 
@@ -106,7 +108,7 @@ This library is used for reading and writing various audio file formats. As it i
 - **License**: GPL-2.0
 - **Copyright**: Copyright (c) 1999-2023 Alexander Djourik
 
-**Note**: True Audio codec is licensed under GPL-2.0. Since it is dynamically linked and not statically compiled into Petrichor, the GPL does not extend to Petrichor's codebase.
+**Note**: True Audio codec is licensed under GPL-2.0. Since it is dynamically linked and not statically compiled into Musicae, the GPL does not extend to Musicae's codebase.
 
 ### DSD (Direct Stream Digital) Decoders
 
@@ -124,25 +126,25 @@ This library is used for reading and writing various audio file formats. As it i
 SFBAudioEngine may utilize additional codec libraries depending on the audio format. All libraries are:
 
 - Dynamically linked at runtime
-- Not distributed with Petrichor's source code
+- Not distributed with Musicae's source code
 - Licensed under permissive open source licenses (BSD, LGPL, or GPL)
 
 ---
 
 ## Dynamic Linking Notice
 
-All audio codec libraries listed above are **dynamically linked** at runtime and are **not statically compiled** into Petrichor's binary. This means:
+All audio codec libraries listed above are **dynamically linked** at runtime and are **not statically compiled** into Musicae's binary. This means:
 
-1. The GPL/LGPL-licensed codecs do not affect Petrichor's MIT license
+1. The GPL/LGPL-licensed codecs do not affect Musicae's MIT license
 2. Users can replace or update codec libraries independently
-3. Petrichor's source code remains under MIT license
+3. Musicae's source code remains under MIT license
 4. Codec libraries are loaded from the system or SFBAudioEngine framework at runtime
 
 ---
 
 ## CrescendoKit
 
-Petrichor's modern playback engine and its scan-time metadata reader are provided by Crescendo, distributed via the CrescendoKit package as three dynamically linked, embedded xcframeworks. These are used at runtime when the modern playback engine is enabled.
+Musicae's modern playback engine and its scan-time metadata reader are provided by Crescendo, distributed via the CrescendoKit package as three dynamically linked, embedded xcframeworks. These are used at runtime when the modern playback engine is enabled.
 
 ### Crescendo
 
@@ -156,7 +158,7 @@ Petrichor's modern playback engine and its scan-time metadata reader are provide
 - **License**: LGPL-2.1-or-later
 - **Copyright**: Copyright (c) The FFmpeg developers
 
-FFmpeg is dynamically linked through CrescendoKit and replaceable, so its LGPL terms do not extend to Petrichor's MIT license.
+FFmpeg is dynamically linked through CrescendoKit and replaceable, so its LGPL terms do not extend to Musicae's MIT license.
 
 ### TagLib (via CTagLib)
 
@@ -172,7 +174,7 @@ TagLib is dynamically linked through CrescendoKit and used to read audio file me
 
 | Component          | License      | Distributed With Source                              |
 | ------------------ | ------------ | ---------------------------------------------------- |
-| Petrichor          | MIT          | Yes                                                  |
+| Musicae          | MIT          | Yes                                                  |
 | SFBAudioEngine     | MIT          | No (SPM dependency)                                  |
 | GRDB.swift         | MIT          | No (SPM dependency)                                  |
 | Sparkle            | MIT          | No (SPM dependency)                                  |
@@ -187,7 +189,7 @@ TagLib is dynamically linked through CrescendoKit and used to read audio file me
 
 For the complete license texts of all components, please refer to:
 
-- Petrichor: [LICENSE](../LICENSE) file in the root directory
+- Musicae: [LICENSE](../LICENSE) file in the root directory
 - SFBAudioEngine: https://github.com/sbooth/SFBAudioEngine/blob/master/LICENSE.txt
 - GRDB.swift: https://github.com/groue/GRDB.swift/blob/master/LICENSE
 - Sparkle: https://github.com/sparkle-project/Sparkle/blob/2.x/LICENSE
@@ -198,7 +200,7 @@ Individual codec library licenses can be found in their respective source reposi
 
 ## Online Data Sources
 
-Petrichor fetches artist metadata from the following online services:
+Musicae fetches artist metadata from the following online services:
 
 ### Artist Images
 
@@ -228,6 +230,6 @@ Petrichor fetches artist metadata from the following online services:
 
 ## Acknowledgments
 
-Petrichor is grateful to all the open source projects, data sources, and their contributors that make this app possible.
+Musicae is grateful to all the open source projects, data sources, and their contributors that make this app possible.
 
 _Last Updated: March 2026_
