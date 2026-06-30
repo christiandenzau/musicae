@@ -25,6 +25,8 @@ import Foundation
 struct Options {
     var paths: [String] = []
     var selfTest = false
+    var fingerprint = false
+    var dbPath: String?
     var help = false
     var onsetBand: OnsetBand = .full
     var minBPM = 120.0
@@ -41,6 +43,13 @@ func parseArguments(_ args: [String]) -> Options {
             options.help = true
         case "--selftest":
             options.selfTest = true
+        case "fingerprint":
+            options.fingerprint = true
+        case "--db":
+            if index + 1 < args.count {
+                options.dbPath = args[index + 1]
+                index += 1
+            }
         case "--bass":
             // Optionaler Hz-Wert als nächstes Argument.
             var maxHz = 250.0
@@ -72,11 +81,14 @@ func printUsage() {
     bpmdetect — nativer BPM-Schätzer (Musicae, Phase 2)
 
     Nutzung:
-      bpmdetect <datei>        BPM einer einzelnen Audiodatei
-      bpmdetect <ordner>       je Datei im Ordner den BPM (Testmodus)
-      bpmdetect --selftest     synthetische Beats prüfen (ohne Dateien)
+      bpmdetect <datei>               BPM einer einzelnen Audiodatei
+      bpmdetect <ordner>              je Datei im Ordner den BPM (Testmodus)
+      bpmdetect --selftest            synthetische Beats prüfen (ohne Dateien)
+      bpmdetect fingerprint <ordner>  Achsen je Titel rekursiv berechnen und
+                                      als Fingerprint-Zeile persistieren (#5)
 
     Optionen:
+      --db <pfad>   Ziel-SQLite-Datei für fingerprint (Default ./fingerprints.db)
       --bass [hz]   Onset auf Bass/untere Mitten fokussieren (Default 250 Hz)
       --min <bpm>   untere Bandgrenze (Default 120)
       --max <bpm>   obere Bandgrenze (Default 150)
@@ -108,6 +120,19 @@ func taggedBPM(url: URL) async -> Double? {
         }
     }
     return nil
+}
+
+/// Liest den im Tag hinterlegten Titel (für das Mix-Version-Parsing). Fällt
+/// auf den Dateinamen ohne Endung zurück, falls kein Titel-Tag vorhanden ist.
+func trackTitle(url: URL) async -> String? {
+    let asset = AVURLAsset(url: url)
+    if let common = try? await asset.load(.commonMetadata) {
+        let titleItems = AVMetadataItem.metadataItems(from: common, filteredByIdentifier: .commonIdentifierTitle)
+        if let item = titleItems.first, let value = try? await item.load(.stringValue), !value.isEmpty {
+            return value
+        }
+    }
+    return url.deletingPathExtension().lastPathComponent
 }
 
 func makeEstimator(_ options: Options) -> BPMEstimator {
@@ -236,6 +261,122 @@ func runSelfTest(options: Options) {
     }
 }
 
+// MARK: - Fingerprint-Modus (#5)
+
+/// Analysiert eine Datei zu einem Fingerprint (BPM + Achsen + Mix-Version),
+/// ohne zu persistieren. CPU-lastig (Dekodieren + FFT) — wird begrenzt parallel
+/// aufgerufen. Eine Datei wird genau einmal dekodiert und trägt beide Analysen.
+func analyzeOne(
+    _ url: URL,
+    bpmEstimator: BPMEstimator,
+    axesAnalyzer: AudioAxesAnalyzer,
+    analyzedAt: Date
+) async -> TrackFingerprint? {
+    guard let samples = try? AudioLoader.loadMonoSamples(url: url) else { return nil }
+    let sampleRate = AudioLoader.defaultSampleRate
+    guard let axes = axesAnalyzer.analyze(samples: samples, sampleRate: sampleRate) else { return nil }
+
+    let bpm = bpmEstimator.estimate(samples: samples, sampleRate: sampleRate)
+    let title = await trackTitle(url: url)
+    let mixVersion = title.flatMap { MixVersionParser.parse(title: $0) }
+    let duration = Double(samples.count) / sampleRate
+
+    return TrackFingerprint(
+        path: url.path,
+        title: title,
+        durationSeconds: duration,
+        bpm: bpm?.bpm,
+        bpmConfidence: bpm?.confidence,
+        axes: axes,
+        mixVersion: mixVersion,
+        analyzedAt: analyzedAt
+    )
+}
+
+/// Sammelt rekursiv alle Audiodateien unter `folder`. Synchron, weil sich der
+/// `DirectoryEnumerator` nicht aus einem async-Kontext iterieren lässt.
+/// `nil` = Ordner nicht lesbar, `[]` = lesbar, aber keine Audiodateien.
+func collectAudioFiles(in folder: URL) -> [URL]? {
+    guard let enumerator = FileManager.default.enumerator(
+        at: folder,
+        includingPropertiesForKeys: nil,
+        options: [.skipsHiddenFiles]
+    ) else {
+        return nil
+    }
+    var audioFiles: [URL] = []
+    for case let url as URL in enumerator where audioExtensions.contains(url.pathExtension.lowercased()) {
+        audioFiles.append(url)
+    }
+    return audioFiles
+}
+
+func runFingerprint(_ folder: URL, options: Options) async {
+    let dbPath = options.dbPath ?? "fingerprints.db"
+    let store: FingerprintStore
+    do {
+        store = try FingerprintStore(path: dbPath)
+    } catch {
+        FileHandle.standardError.write(Data("Fehler: Fingerprint-DB \(dbPath) nicht nutzbar: \(error)\n".utf8))
+        exit(1)
+    }
+
+    // Rekursiv alle Audiodateien einsammeln — die Testscheibe hat Albumordner.
+    guard var audioFiles = collectAudioFiles(in: folder) else {
+        FileHandle.standardError.write(Data("Fehler: Ordner \(folder.path) nicht lesbar\n".utf8))
+        exit(1)
+    }
+    audioFiles.sort { $0.path.localizedStandardCompare($1.path) == .orderedAscending }
+
+    guard !audioFiles.isEmpty else {
+        print("Keine Audiodateien in \(folder.path)")
+        return
+    }
+
+    print("Fingerprint-Lauf über \(audioFiles.count) Titel → \(dbPath)")
+    let bpmEstimator = makeEstimator(options)
+    let axesAnalyzer = AudioAxesAnalyzer()
+    let analyzedAt = Date()
+    let maxConcurrent = max(2, ProcessInfo.processInfo.activeProcessorCount - 1)
+    let total = audioFiles.count
+
+    var processed = 0
+    var failed = 0
+
+    // Gleitendes Fenster: stets ~maxConcurrent Analysen parallel, Persistenz
+    // seriell beim Einsammeln (die DatabaseQueue serialisiert Schreibzugriffe ohnehin).
+    await withTaskGroup(of: TrackFingerprint?.self) { group in
+        var next = 0
+        func schedule(_ index: Int) {
+            let file = audioFiles[index]
+            group.addTask {
+                await analyzeOne(file, bpmEstimator: bpmEstimator, axesAnalyzer: axesAnalyzer, analyzedAt: analyzedAt)
+            }
+        }
+        while next < min(maxConcurrent, total) { schedule(next); next += 1 }
+
+        for await result in group {
+            if let result, (try? store.save(result)) != nil {
+                processed += 1
+            } else {
+                failed += 1
+            }
+            if next < total { schedule(next); next += 1 }
+
+            let done = processed + failed
+            if done % 25 == 0 || done == total {
+                FileHandle.standardError.write(Data("\r  \(done)/\(total) (\(failed) Fehler)".utf8))
+            }
+        }
+    }
+    FileHandle.standardError.write(Data("\n".utf8))
+
+    let stored = (try? store.count()) ?? processed
+    print(String(repeating: "-", count: 50))
+    print("Fertig: \(processed) Fingerprints geschrieben, \(failed) Fehler.")
+    print("In der DB: \(stored) Zeilen in `track_fingerprints`.")
+}
+
 // MARK: - Einstieg
 
 let options = parseArguments(Array(CommandLine.arguments.dropFirst()))
@@ -262,7 +403,13 @@ guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory
     exit(1)
 }
 
-if isDirectory.boolValue {
+if options.fingerprint {
+    guard isDirectory.boolValue else {
+        FileHandle.standardError.write(Data("Fehler: `fingerprint` erwartet einen Ordner\n".utf8))
+        exit(1)
+    }
+    await runFingerprint(url, options: options)
+} else if isDirectory.boolValue {
     await runFolder(url, options: options)
 } else {
     await runSingleFile(url, options: options)

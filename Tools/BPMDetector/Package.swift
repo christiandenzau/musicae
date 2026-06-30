@@ -1,22 +1,34 @@
 // swift-tools-version: 6.0
 //
-// Eigenständiges Kommandozeilen-Werkzeug zum nativen Schätzen des Tempos (BPM)
-// eines Titels. Phase 2 (Teil 1) des Musicae-Umsetzungsplans — das riskante
-// Stück der Audio-Analyse, bewusst als separates Paket gebaut, damit es ohne
-// Xcode mit `swift build`/`swift test` verifizierbar ist.
+// Eigenständiges Kommandozeilen-Werkzeug für die native Audio-Analyse eines
+// Titels (Musicae-Umsetzungsplan, Phase 2). Bewusst als separates Paket
+// gebaut, damit es ohne Xcode mit `swift build`/`swift test` verifizierbar ist.
 //
-// `BPMKit`     – die reine, I/O-freie Schätzlogik (unit-testbar).
-// `bpmdetect`  – das CLI-Frontend (Datei- und Ordner-/Testmodus).
+//   Teil 1 (#4): Tempo (BPM) per spektralem Fluss + Autokorrelation.
+//   Teil 2 (#5): leichte Achsen (Lautheit, Dynamik, Helligkeit, Bass) plus
+//                eine je Track persistierte Fingerprint-Zeile (GRDB).
+//
+// `BPMKit`     – die reine Analyselogik + die GRDB-Persistenz.
+// `bpmdetect`  – das CLI-Frontend (Datei-, Ordner-, Selbsttest- und
+//                Fingerprint-Modus).
 //
 import PackageDescription
 
 let package = Package(
     name: "BPMDetector",
     platforms: [.macOS(.v13)],
+    dependencies: [
+        // Dieselbe Persistenzschicht wie die Musicae-App (dort 7.11.0).
+        .package(url: "https://github.com/groue/GRDB.swift", from: "7.11.0"),
+    ],
     targets: [
-        // Reine Logik: Audio-Laden, spektraler Fluss, Autokorrelation.
-        // AVFoundation/Accelerate werden bei `import` automatisch gelinkt.
-        .target(name: "BPMKit"),
+        // Reine Logik (Audio-Laden, spektraler Fluss, Autokorrelation, Achsen)
+        // plus die Fingerprint-Persistenz. AVFoundation/Accelerate werden bei
+        // `import` automatisch gelinkt; GRDB trägt die SQLite-Schicht.
+        .target(
+            name: "BPMKit",
+            dependencies: [.product(name: "GRDB", package: "GRDB.swift")]
+        ),
 
         .executableTarget(
             name: "bpmdetect",
