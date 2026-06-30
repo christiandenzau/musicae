@@ -10,14 +10,14 @@ Stand: 2026-06-30 · Schema-Version: `v11` (siehe [Migrationshistorie](#7-migrat
 
 **Persistenzschicht:** [GRDB](https://github.com/groue/GRDB.swift) über eine einzelne `DatabaseQueue`. Es gibt genau eine zentrale Klasse [`DatabaseManager`](../Managers/Database/DatabaseManager.swift), deren domänenspezifische Logik auf `DM*.swift`-Erweiterungen verteilt ist (`DMQueries`, `DMMetadata`, `DMTrackProcessing`, …). Modelle sind GRDB-`FetchableRecord`/`PersistableRecord`-Structs/Classes unter [`Models/Core/`](../Models/Core/).
 
-**Dateipfad** (`DatabaseManager.init`, [DatabaseManager.swift:24](../Managers/Database/DatabaseManager.swift)):
+**Dateipfad** (`DatabaseManager.init`, [DatabaseManager.swift:24](../Managers/Database/DatabaseManager.swift)): Musicae läuft **App-Sandbox** (`ENABLE_APP_SANDBOX = YES` in beiden Build-Konfigurationen). Daher liefert `FileManager.default.url(for: .applicationSupportDirectory, …)` **nicht** das globale `~/Library/Application Support`, sondern das Application-Support-Verzeichnis **im Sandbox-Container**:
 
-| Build | Bundle-ID | Datei |
+| Build | Bundle-ID | Datei (im Container) |
 |---|---|---|
-| Release | `org.Musicae` | `~/Library/Application Support/org.Musicae/musicae.db` |
-| Debug | `org.Musicae.debug` | `~/Library/Application Support/org.Musicae.debug/musicae-debug.db` |
+| Release | `org.Musicae` | `~/Library/Containers/org.Musicae/Data/Library/Application Support/org.Musicae/musicae.db` |
+| Debug | `org.Musicae.debug` | `~/Library/Containers/org.Musicae.debug/Data/Library/Application Support/org.Musicae.debug/musicae-debug.db` |
 
-Der Ordnername ist die Bundle-ID (`Bundle.main.bundleIdentifier`, Fallback `org.Musicae` aus [Constants.swift:96](../Utilities/Constants.swift)). Der Dateiname hängt am `.debug`-Suffix der Bundle-ID.
+Der innere Ordnername ist die Bundle-ID (`Bundle.main.bundleIdentifier`, Fallback `org.Musicae` aus [Constants.swift:96](../Utilities/Constants.swift)); der Dateiname hängt am `.debug`-Suffix der Bundle-ID. **Praxis-Hinweis:** Wer die DB von außen lesen will (z. B. ein Analyse-Tool), findet den exakten Pfad zur Laufzeit am zuverlässigsten via `lsof -p <pid> -Fn | grep musicae` — und sollte gegen eine **Kopie** (inkl. `-wal`/`-shm`) arbeiten, solange die App läuft (WAL-Lock).
 
 **PRAGMA-Konfiguration** (bei jedem Verbindungsaufbau, `prepareDatabase`):
 - `journal_mode = WAL` (Write-Ahead-Log; daneben liegen `-wal`- und `-shm`-Dateien)
