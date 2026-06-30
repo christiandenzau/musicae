@@ -48,6 +48,11 @@ playground.xcworkspace
 
 .build/
 
+# Lokale Ausgabe des BPMDetector-Fingerprint-Laufs (generierte Analyse-Daten)
+fingerprints.db
+fingerprints.db-wal
+fingerprints.db-shm
+
 # CocoaPods
 #
 # We recommend against adding the Pods directory to your .gitignore. However
