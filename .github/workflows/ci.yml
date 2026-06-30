@@ -214,6 +214,25 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | xcbeautify --renderer github-actions
 
+  # Standalone BPM estimator tool (Tools/BPMDetector). A separate SwiftPM
+  # package, independent of the app target — builds and runs its self-test
+  # suite so the riskiest piece of the audio analysis stays verified. Not part
+  # of ci-summary's required set; promote it in branch protection if desired.
+  bpm-detector:
+    name: BPM Detector (SwiftPM)
+    runs-on: macos-26
+    timeout-minutes: 20
+    needs: [lint, actionlint]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app"
+
+      - name: Build & test BPM detector
+        run: swift test --package-path Tools/BPMDetector
+
   # Single required status for branch protection. release-build is intentionally
   # excluded (it only runs on push to main/tags, never on PRs).
   ci-summary:
