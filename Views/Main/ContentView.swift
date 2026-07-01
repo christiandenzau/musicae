@@ -76,7 +76,11 @@ struct ContentView: View {
     @State private var libraryFilteredItems: [LibraryFilterItem] = []
     @State private var libraryCachedTracks: [Track] = []
     @State private var librarySelectedSidebarItem: LibrarySidebarItem?
-    
+
+    // Similar-tracks sheet (#17): set by the `.showSimilarTracks` notification from the
+    // track context menu.
+    @State private var similarTracksRequest: SimilarTracksRequest?
+
     @ObservedObject private var notificationManager = NotificationManager.shared
 
     init() {
@@ -209,6 +213,17 @@ struct ContentView: View {
         .sheet(item: $libraryManager.pendingMergeRequest) { request in
             MergeEntitySheet(request: request)
                 .environmentObject(libraryManager)
+        }
+        .sheet(item: $similarTracksRequest) { request in
+            SimilarTracksView(request: request)
+                .environmentObject(libraryManager)
+                .environmentObject(playlistManager)
+                .environmentObject(playbackManager)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showSimilarTracks)) { notification in
+            if let track = notification.userInfo?["track"] as? Track, let trackId = track.trackId {
+                similarTracksRequest = SimilarTracksRequest(anchorTrackId: trackId, anchorTitle: track.title)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .importPlaylists)) { _ in
             importPlaylists()

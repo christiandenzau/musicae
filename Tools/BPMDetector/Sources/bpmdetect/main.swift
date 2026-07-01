@@ -8,8 +8,8 @@
 //
 // Optionen:
 //   --bass [hz]   Onset-Messung auf Bass/untere Mitten fokussieren (Default 250)
-//   --min <bpm>   untere Bandgrenze (Default 120)
-//   --max <bpm>   obere Bandgrenze (Default 150)
+//   --min <bpm>   untere Bandgrenze (Default 70)
+//   --max <bpm>   obere Bandgrenze (Default 180)
 //   --help        diese Hilfe
 //
 // Bewusst ohne Fremd-Dependencies (auch kein ArgumentParser): ein Werkzeug,
@@ -31,8 +31,8 @@ struct Options {
     var dbPath: String?
     var help = false
     var onsetBand: OnsetBand = .full
-    var minBPM = 120.0
-    var maxBPM = 150.0
+    var minBPM = 70.0
+    var maxBPM = 180.0
     // Abfrage/Nachbarn (#6)
     var filter = FingerprintFilter()
     var limit = 10
@@ -249,8 +249,8 @@ func printUsage() {
 
     Optionen (BPM-Schätzung):
       --bass [hz]   Onset auf Bass/untere Mitten fokussieren (Default 250 Hz)
-      --min <bpm>   untere Bandgrenze (Default 120)
-      --max <bpm>   obere Bandgrenze (Default 150)
+      --min <bpm>   untere Bandgrenze (Default 70)
+      --max <bpm>   obere Bandgrenze (Default 180)
       --help        diese Hilfe
     """)
 }

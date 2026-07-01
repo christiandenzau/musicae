@@ -18,7 +18,9 @@ final class FingerprintQueryTests: XCTestCase {
         loudness: Double = -12,
         bpm: Double? = 130,
         bass: Double = 0.3,
-        dynamic: Double = 6
+        dynamic: Double = 6,
+        brightness: Double = 1200,
+        confidence: Double? = nil
     ) -> TrackFingerprint {
         TrackFingerprint(
             path: path,
@@ -28,8 +30,8 @@ final class FingerprintQueryTests: XCTestCase {
             year: year,
             durationSeconds: duration,
             bpm: bpm,
-            bpmConfidence: bpm == nil ? nil : 0.8,
-            axes: AudioAxes(rmsLoudnessDb: loudness, dynamicRangeDb: dynamic, spectralBrightnessHz: 1200, bassRatio: bass),
+            bpmConfidence: confidence ?? (bpm == nil ? nil : 0.8),
+            axes: AudioAxes(rmsLoudnessDb: loudness, dynamicRangeDb: dynamic, spectralBrightnessHz: brightness, bassRatio: bass),
             mixVersion: mix,
             analyzedAt: Date()
         )
@@ -133,5 +135,76 @@ final class FingerprintQueryTests: XCTestCase {
         XCTAssertEqual(neighbors.count, 2)
         // Aufsteigende Distanz.
         XCTAssertLessThanOrEqual(neighbors[0].distance, neighbors[1].distance)
+    }
+
+    func testNeighborsRespectMaxDistanceCutoff() {
+        // Der Cutoff darf die Liste nicht auf `limit` auffüllen: ein Außenseiter bekommt
+        // lieber wenige passende Nachbarn als viele mit Füllsel (Ehrlichkeitsgesetz).
+        let (dataset, anchor) = neighborDataset()
+        let all = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertGreaterThan(all.count, 1)
+        // Cutoff knapp unter dem entferntesten Nachbarn → mindestens dieser fällt weg.
+        let cutoff = all.last!.distance - 0.001
+        let capped = dataset.neighbors(of: anchor, limit: 10, maxDistance: cutoff)
+        XCTAssertLessThan(capped.count, all.count, "Cutoff muss den entferntesten Nachbarn ausschließen")
+        XCTAssertTrue(capped.allSatisfy { $0.distance <= cutoff }, "Kein Nachbar jenseits des Cutoffs")
+        XCTAssertEqual(capped.first?.track.path, all.first?.track.path, "Der nächste Nachbar bleibt")
+    }
+
+    func testNeighborsPreferSimilarBrightness() {
+        // Anker und beide Kandidaten sind in Ära, Energie, Mix und Länge identisch —
+        // sie unterscheiden sich nur in der Klangfarbe (spektrale Helligkeit). Der
+        // klanglich nähere Titel muss vor dem dunkleren liegen. Genau der Fall, der
+        // hellen Synth-Dance vom dunkleren, sprachlastigen Material trennt, ohne sich
+        // auf Genre-Tags zu verlassen.
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: "Extended Mix", brightness: 1400)
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("sameColour", year: 1996, duration: 300, mix: "Extended Mix", brightness: 1400),
+            makeFingerprint("darker", year: 1996, duration: 300, mix: "Extended Mix", brightness: 600)
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertEqual(neighbors.first?.track.path, "sameColour")
+        let sameDistance = neighbors.first { $0.track.path == "sameColour" }?.distance ?? .infinity
+        let darkerDistance = neighbors.first { $0.track.path == "darker" }?.distance ?? .infinity
+        XCTAssertLessThan(sameDistance, darkerDistance)
+    }
+
+    func testNeighborsSeparateOnCombinedTimbre() {
+        // Zwei Kandidaten, gleich in Ära, Mix und Länge. „twin" teilt Bass, Dynamik und
+        // Helligkeit mit dem Anker; „intruder" weicht in allen dreien ab — ein Genre-
+        // Fremdkörper wie Rap/Rock in einer Dance-Compilation, den die gemittelte Energie
+        // durchgehen ließe. Weil die Klang-Achsen einzeln zählen, addiert sich seine
+        // Distanz und er landet klar hinter dem klanglichen Zwilling.
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: "Extended Mix", bass: 0.6, dynamic: 3, brightness: 1500)
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("twin", year: 1996, duration: 300, mix: "Extended Mix", bass: 0.58, dynamic: 3.2, brightness: 1500),
+            makeFingerprint("intruder", year: 1996, duration: 300, mix: "Extended Mix", bass: 0.2, dynamic: 9, brightness: 700)
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertEqual(neighbors.first?.track.path, "twin")
+        let twinDistance = neighbors.first { $0.track.path == "twin" }?.distance ?? .infinity
+        let intruderDistance = neighbors.first { $0.track.path == "intruder" }?.distance ?? .infinity
+        XCTAssertLessThan(twinDistance, intruderDistance)
+    }
+
+    func testNeighborsSeparateOnTempoAndConfidence() {
+        // Zwei Kandidaten, gleich in Ära, Klang, Mix und Länge. „danceTwin" teilt Tempo
+        // und Beat-Klarheit mit dem Dance-Anker; „slowRap" ist deutlich langsamer und hat
+        // einen unklaren Beat (niedrige Confidence) — genau das Rödelheim-Muster (echt
+        // ~97 BPM, 28 % Confidence gegen „No Limit" ~140, 84 %). Tempo- und Confidence-
+        // Achse schieben ihn klar hinter den Dance-Zwilling.
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: "Extended Mix", bpm: 140, confidence: 0.85)
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("danceTwin", year: 1996, duration: 300, mix: "Extended Mix", bpm: 138, confidence: 0.82),
+            makeFingerprint("slowRap", year: 1996, duration: 300, mix: "Extended Mix", bpm: 97, confidence: 0.28)
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertEqual(neighbors.first?.track.path, "danceTwin")
+        let twinDistance = neighbors.first { $0.track.path == "danceTwin" }?.distance ?? .infinity
+        let rapDistance = neighbors.first { $0.track.path == "slowRap" }?.distance ?? .infinity
+        XCTAssertLessThan(twinDistance, rapDistance)
     }
 }

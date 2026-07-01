@@ -93,6 +93,7 @@ public final class FingerprintDataset {
     private let bpm: MinMax
     private let bass: MinMax
     private let dynamic: MinMax
+    private let brightness: MinMax
 
     public init(tracks: [TrackFingerprint]) {
         self.tracks = tracks
@@ -100,6 +101,7 @@ public final class FingerprintDataset {
         bpm = MinMax(tracks.compactMap(\.bpm))
         bass = MinMax(tracks.map(\.bassRatio))
         dynamic = MinMax(tracks.map(\.dynamicRangeDb))
+        brightness = MinMax(tracks.map(\.spectralBrightnessHz))
     }
 
     // MARK: Energie
@@ -138,21 +140,36 @@ public final class FingerprintDataset {
 
     // MARK: Nachbarn
 
-    /// Die `limit` nächsten Nachbarn zum Anker, aufsteigend nach Distanz. Der
-    /// Anker selbst (gleicher Pfad) ist ausgeschlossen.
-    public func neighbors(of anchor: TrackFingerprint, limit: Int = 10) -> [FingerprintNeighbor] {
-        let anchorEnergy = energy(of: anchor)
-        return tracks
+    /// Die nächsten Nachbarn zum Anker, aufsteigend nach Distanz. Der Anker selbst
+    /// (gleicher Pfad) ist ausgeschlossen.
+    ///
+    /// - Parameter maxDistance: Ähnlichkeits-Cutoff. Titel jenseits dieser Distanz gelten
+    ///   nicht mehr als verwandt und werden weggelassen — die Liste füllt **nicht** auf
+    ///   `limit` auf, wenn es nicht genug wirklich nahe Nachbarn gibt (Ehrlichkeitsgesetz:
+    ///   lieber wenige passende als viele mit Füllsel). Default `.infinity` = kein Cutoff.
+    public func neighbors(
+        of anchor: TrackFingerprint,
+        limit: Int = 10,
+        maxDistance: Double = .infinity
+    ) -> [FingerprintNeighbor] {
+        tracks
             .filter { $0.path != anchor.path }
-            .map { FingerprintNeighbor(track: $0, distance: distance(anchor: anchor, anchorEnergy: anchorEnergy, to: $0)) }
+            .map { FingerprintNeighbor(track: $0, distance: distance(anchor: anchor, to: $0)) }
+            .filter { $0.distance <= maxDistance }
             .sorted { $0.distance < $1.distance }
             .prefix(limit)
             .map { $0 }
     }
 
-    /// Gewichtete Distanz: Ära am schwersten (die Empfehlung soll in der Zeit
-    /// bleiben), dann Energie, dann Mix-Art und Länge.
-    private func distance(anchor: TrackFingerprint, anchorEnergy: Double, to candidate: TrackFingerprint) -> Double {
+    /// Gewichtete Distanz: die Ära führt (die Empfehlung soll in der Zeit bleiben),
+    /// dann das **Tempo** (mit dem breiten Suchband jetzt verlässlich — der schärfste
+    /// Trenner, Dance ~140 vs. Rap ~90) und die einzelnen Klang-Achsen (Dynamik, Bass,
+    /// Klangfarbe, Lautheit, jeweils **getrennt**, damit sich stiltrennende Unterschiede
+    /// addieren statt sich in einer gemittelten „Energie" auszugleichen), dazu die
+    /// **Beat-Klarheit** (Confidence: klarer Four-on-the-Floor vs. komplexer Rhythmus),
+    /// zuletzt Mix-Art und Länge. Alles datensatz-relativ normiert und rein akustisch
+    /// (tag-unabhängig — Genre-Tags in Compilations sind oft pauschal oder leer).
+    private func distance(anchor: TrackFingerprint, to candidate: TrackFingerprint) -> Double {
         var sum = 0.0
 
         // Ära (Jahr): ±5 Jahre spannen die volle Teil-Distanz auf.
@@ -162,8 +179,26 @@ public final class FingerprintDataset {
             sum += 3.0 * 0.5   // unbekanntes Jahr: mittlere, nicht maximale Strafe
         }
 
-        // Energie: ähnliche Treibkraft.
-        sum += 2.0 * abs(energy(of: candidate) - anchorEnergy)
+        // Tempo: der schärfste Trenner, sobald der Schätzer den echten Beat findet.
+        // Nur wenn beide einen Wert haben — ohne erkannten Beat keine Aussage.
+        if let anchorBpm = anchor.bpm, let candidateBpm = candidate.bpm {
+            sum += 2.0 * axisDistance(bpm, anchorBpm, candidateBpm)
+        }
+
+        // Klang-Charakter: die Achsen, die Stil/Genre am stärksten tragen — Dynamik
+        // (Sprach-/Transienten-Struktur vs. durchlaufender Four-on-the-Floor), Bass-Anteil
+        // und Klangfarbe. Einzeln gewichtet, damit sie sich addieren.
+        sum += 1.5 * axisDistance(dynamic, anchor.dynamicRangeDb, candidate.dynamicRangeDb)
+        sum += 1.5 * axisDistance(bass, anchor.bassRatio, candidate.bassRatio)
+        sum += 1.5 * axisDistance(brightness, anchor.spectralBrightnessHz, candidate.spectralBrightnessHz)
+        // Lautheit: schwächeres, Mastering-abhängiges Signal — zählt mit, aber leichter.
+        sum += 1.0 * axisDistance(loudness, anchor.rmsLoudnessDb, candidate.rmsLoudnessDb)
+
+        // Beat-Klarheit: ein sauberer Dance-Beat (hohe Confidence) unterscheidet sich vom
+        // rhythmisch komplexen Rap/Rock (niedrige Confidence). Confidence ist bereits 0…1.
+        if let anchorConfidence = anchor.bpmConfidence, let candidateConfidence = candidate.bpmConfidence {
+            sum += 1.0 * abs(anchorConfidence - candidateConfidence)
+        }
 
         // Mix-Art: gleiche Klasse ist gut, sonst voller Teilbeitrag.
         sum += 1.0 * (candidate.mixClass == anchor.mixClass ? 0 : 1)
@@ -172,6 +207,11 @@ public final class FingerprintDataset {
         sum += 1.0 * min(1, abs(candidate.durationSeconds - anchor.durationSeconds) / 120.0)
 
         return sum
+    }
+
+    /// Betrag der Differenz einer Achse, auf 0…1 datensatz-relativ normiert.
+    private func axisDistance(_ scale: MinMax, _ anchorValue: Double, _ candidateValue: Double) -> Double {
+        abs(scale.normalize(anchorValue) - scale.normalize(candidateValue))
     }
 }
 
