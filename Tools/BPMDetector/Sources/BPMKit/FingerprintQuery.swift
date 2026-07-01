@@ -140,12 +140,22 @@ public final class FingerprintDataset {
 
     // MARK: Nachbarn
 
-    /// Die `limit` nächsten Nachbarn zum Anker, aufsteigend nach Distanz. Der
-    /// Anker selbst (gleicher Pfad) ist ausgeschlossen.
-    public func neighbors(of anchor: TrackFingerprint, limit: Int = 10) -> [FingerprintNeighbor] {
+    /// Die nächsten Nachbarn zum Anker, aufsteigend nach Distanz. Der Anker selbst
+    /// (gleicher Pfad) ist ausgeschlossen.
+    ///
+    /// - Parameter maxDistance: Ähnlichkeits-Cutoff. Titel jenseits dieser Distanz gelten
+    ///   nicht mehr als verwandt und werden weggelassen — die Liste füllt **nicht** auf
+    ///   `limit` auf, wenn es nicht genug wirklich nahe Nachbarn gibt (Ehrlichkeitsgesetz:
+    ///   lieber wenige passende als viele mit Füllsel). Default `.infinity` = kein Cutoff.
+    public func neighbors(
+        of anchor: TrackFingerprint,
+        limit: Int = 10,
+        maxDistance: Double = .infinity
+    ) -> [FingerprintNeighbor] {
         tracks
             .filter { $0.path != anchor.path }
             .map { FingerprintNeighbor(track: $0, distance: distance(anchor: anchor, to: $0)) }
+            .filter { $0.distance <= maxDistance }
             .sorted { $0.distance < $1.distance }
             .prefix(limit)
             .map { $0 }

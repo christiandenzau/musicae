@@ -137,6 +137,20 @@ final class FingerprintQueryTests: XCTestCase {
         XCTAssertLessThanOrEqual(neighbors[0].distance, neighbors[1].distance)
     }
 
+    func testNeighborsRespectMaxDistanceCutoff() {
+        // Der Cutoff darf die Liste nicht auf `limit` auffüllen: ein Außenseiter bekommt
+        // lieber wenige passende Nachbarn als viele mit Füllsel (Ehrlichkeitsgesetz).
+        let (dataset, anchor) = neighborDataset()
+        let all = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertGreaterThan(all.count, 1)
+        // Cutoff knapp unter dem entferntesten Nachbarn → mindestens dieser fällt weg.
+        let cutoff = all.last!.distance - 0.001
+        let capped = dataset.neighbors(of: anchor, limit: 10, maxDistance: cutoff)
+        XCTAssertLessThan(capped.count, all.count, "Cutoff muss den entferntesten Nachbarn ausschließen")
+        XCTAssertTrue(capped.allSatisfy { $0.distance <= cutoff }, "Kein Nachbar jenseits des Cutoffs")
+        XCTAssertEqual(capped.first?.track.path, all.first?.track.path, "Der nächste Nachbar bleibt")
+    }
+
     func testNeighborsPreferSimilarBrightness() {
         // Anker und beide Kandidaten sind in Ära, Energie, Mix und Länge identisch —
         // sie unterscheiden sich nur in der Klangfarbe (spektrale Helligkeit). Der

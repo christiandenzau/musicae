@@ -21,6 +21,12 @@ extension DatabaseManager {
         case neighbors([Track])
     }
 
+    /// Similarity cutoff: neighbours beyond this weighted distance aren't shown, so an
+    /// outsider (e.g. a rock track in a Eurodance library) gets a short — or empty — list
+    /// instead of filler. Honesty law: don't suggest what doesn't fit. Since the axes are
+    /// min/max-normalized (0…1), the scale is stable across libraries; calibratable.
+    static let similarityCutoff = 3.5
+
     /// Finds the tracks most similar to `anchorId` using BPMKit's weighted distance over
     /// every non-duplicate fingerprint in the library.
     func similarTracks(toTrackId anchorId: Int64, limit: Int = 25) async -> SimilarTracksResult {
@@ -79,7 +85,7 @@ extension DatabaseManager {
                 }
 
                 let dataset = FingerprintDataset(tracks: fingerprints)
-                let neighbours = dataset.neighbors(of: anchor, limit: limit)
+                let neighbours = dataset.neighbors(of: anchor, limit: limit, maxDistance: Self.similarityCutoff)
                 let orderedIds = neighbours.compactMap { trackIdByPath[$0.track.path] }
 
                 // Load the app Track objects and restore the distance ordering (an IN
