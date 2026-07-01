@@ -30,7 +30,7 @@ Der innere Ordnername ist die Bundle-ID (`Bundle.main.bundleIdentifier`, Fallbac
 
 ## 2. Tabellenübersicht
 
-Das Schema kennt **13 echte Tabellen**, **1 FTS5-Virtualtabelle** und **3 Trigger**.
+Das Schema kennt **14 echte Tabellen**, **1 FTS5-Virtualtabelle** und **3 Trigger**.
 
 | Tabelle | Zweck | Primärschlüssel |
 |---|---|---|
@@ -48,6 +48,7 @@ Das Schema kennt **13 echte Tabellen**, **1 FTS5-Virtualtabelle** und **3 Trigge
 | `artist_aliases` | Merge-Aliase Künstler (overleben Re-Import) | `normalized_alias` |
 | `album_aliases` | Merge-Aliase Album (overleben Re-Import) | `normalized_key` |
 | `background_migrations` | Status langlaufender Hintergrund-Migrationen | `identifier` |
+| `track_fingerprints` | **Berechnete Audio-Achsen (BPMKit): BPM+Konfidenz, Lautheit, Dynamik, Helligkeit, Bass, Mix-Version** — 1:1 an `tracks` (v12) | `track_id` (=`tracks.id`) |
 | `tracks_fts` | FTS5-Volltextindex über Titel-Textfelder | (extern, rowid=`tracks.id`) |
 
 **Typ-Konvention** (GRDB → SQLite): `.text`→TEXT, `.integer`→INTEGER, `.double`→DOUBLE/REAL, `.boolean`→BOOLEAN (numerische Affinität), `.blob`→BLOB, `.datetime`→DATETIME (von GRDB als ISO-8601-Text gespeichert).
@@ -187,8 +188,9 @@ Reihenfolge aus [DatabaseMigration.swift](../Managers/Database/DatabaseMigration
 | `v9_rebuild_artist_associations` | Flag für Hintergrund-Migration (Künstler-Verknüpfungen) |
 | `v10_add_filename_index_and_drop_pinned_icon_name` | Index `idx_tracks_filename`; `pinned_items.icon_name` entfernt |
 | `v11_add_merge_support` | Tabellen `artist_aliases` & `album_aliases` + Indizes; Backfill `album_id` auf Album-Pins |
+| `v12_add_track_fingerprints_table` | Tabelle `track_fingerprints` (1:1 an `tracks`, FK/Cascade); flaggt den resumablen Hintergrundlauf `v12_background_compute_fingerprints` (BPMKit-Analyse der Bibliothek) |
 
-Neue Migrationen werden als `v12_…` in `setupMigrator()` ergänzt (Marker „Future Migrations" am Ende der Funktion).
+Neue Migrationen werden als `v13_…` in `setupMigrator()` ergänzt (Marker „Future Migrations" am Ende der Funktion).
 
 ---
 
@@ -226,6 +228,11 @@ Beide bilden „alter Name → kanonische Entität" ab, damit manuelle Merges ei
 
 ### `background_migrations` (v7)
 `identifier` (PK) · `completed_at` · `progress` · `resumable` (default 1)
+
+### `track_fingerprints` (v12, [ComputedFingerprint.swift](../Models/Core/ComputedFingerprint.swift))
+`track_id` (PK, FK→`tracks`, `ON DELETE CASCADE`) · `calculated_bpm` · `bpm_confidence` · `rms_loudness_db`* · `dynamic_range_db`* · `spectral_brightness_hz`* · `bass_ratio`* · `mix_version` · `analyzed_at`* *(*=NOT NULL)*
+
+Die **berechnete** (nicht getaggte) Achsenschicht aus `BPMKit`, 1:1 an `tracks` gekoppelt. Quellenbewusst getrennt vom getaggten `tracks.bpm` (§6, Ehrlichkeitsgesetz): der Schätzer landet hier und überschreibt den Tag nie. Gefüllt vom resumablen Hintergrundlauf `v12_background_compute_fingerprints` ([DMFingerprintAnalysis.swift](../Managers/Database/DMFingerprintAnalysis.swift)). Löst die in §5/§9 empfohlene Hebung der titelgenauen Achsen aus der separaten `fingerprints.db` in die App-DB.
 
 ### `tracks_fts` (FTS5-Virtualtabelle)
 Spalten: `track_id` (not indexed), `title`, `artist`, `album`, `album_artist`, `composer`, `genre`, `year`. Tokenizer `unicode61` (ohne Porter, ab v4). `rowid` = `tracks.id`. Synchron gehalten über die Trigger `tracks_fts_insert` / `tracks_fts_update` / `tracks_fts_delete`.
