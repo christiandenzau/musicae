@@ -14,7 +14,7 @@ private struct EditableRule: Identifiable {
     /// value (boolean / date) or the user supplied a valid one (text / number / duration).
     var isComplete: Bool {
         switch field.valueKind {
-        case .boolean, .date:
+        case .boolean, .date, .enumSelect:
             return true
         case .duration:
             return SmartPlaylistDuration.seconds(from: value.trimmingCharacters(in: .whitespacesAndNewlines)) != nil
@@ -424,6 +424,16 @@ private struct SmartRuleRow: View {
             Picker("", selection: boolBinding) {
                 Text("Yes").tag(true)
                 Text("No").tag(false)
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: RuleLayout.valueWidth)
+
+        case .enumSelect:
+            Picker("", selection: $rule.value) {
+                ForEach(rule.field.enumOptions, id: \.value) { option in
+                    Text(option.label).tag(option.value)
+                }
             }
             .labelsHidden()
             .pickerStyle(.menu)

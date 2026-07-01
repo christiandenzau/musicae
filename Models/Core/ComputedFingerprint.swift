@@ -30,6 +30,11 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
     var bassRatio: Double
     /// Aus dem Titel geparste Mix-/Versionsangabe (z. B. „Extended", „Radio Edit").
     var mixVersion: String?
+    /// Grobe Mix-Klasse (`BPMKit.MixClass`-rawValue: extended/radioEdit/remix/
+    /// original/other). Denormalisiert aus `mixVersion` über die *eine*
+    /// Klassifizierungsquelle `MixClass.classify`, damit die Smart-Playlist-Abfrage
+    /// (#16) ohne die prioritätsbehaftete Logik in SQL nachzubauen filtern kann.
+    var mixClass: String?
     /// Zeitpunkt der Berechnung.
     var analyzedAt: Date
 
@@ -46,6 +51,7 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         static let spectralBrightnessHz = Column("spectral_brightness_hz")
         static let bassRatio = Column("bass_ratio")
         static let mixVersion = Column("mix_version")
+        static let mixClass = Column("mix_class")
         static let analyzedAt = Column("analyzed_at")
     }
 
@@ -58,6 +64,7 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         spectralBrightnessHz: Double,
         bassRatio: Double,
         mixVersion: String?,
+        mixClass: String?,
         analyzedAt: Date
     ) {
         self.trackId = trackId
@@ -68,6 +75,7 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         self.spectralBrightnessHz = spectralBrightnessHz
         self.bassRatio = bassRatio
         self.mixVersion = mixVersion
+        self.mixClass = mixClass
         self.analyzedAt = analyzedAt
     }
 
@@ -80,6 +88,7 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         spectralBrightnessHz = row[Columns.spectralBrightnessHz]
         bassRatio = row[Columns.bassRatio]
         mixVersion = row[Columns.mixVersion]
+        mixClass = row[Columns.mixClass]
         analyzedAt = row[Columns.analyzedAt]
     }
 
@@ -92,6 +101,16 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         container[Columns.spectralBrightnessHz] = spectralBrightnessHz
         container[Columns.bassRatio] = bassRatio
         container[Columns.mixVersion] = mixVersion
+        container[Columns.mixClass] = mixClass
         container[Columns.analyzedAt] = analyzedAt
     }
+}
+
+// MARK: - Association
+
+extension Track {
+    /// The track's computed fingerprint (1:1, keyed on `track_fingerprints.track_id`).
+    /// Used as an optional join so smart-playlist rules can filter on the computed axes
+    /// while tracks without a fingerprint simply yield NULLs (never a false match).
+    static let computedFingerprint = hasOne(ComputedFingerprint.self, using: ForeignKey(["track_id"]))
 }

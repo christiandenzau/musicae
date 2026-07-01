@@ -189,8 +189,9 @@ Reihenfolge aus [DatabaseMigration.swift](../Managers/Database/DatabaseMigration
 | `v10_add_filename_index_and_drop_pinned_icon_name` | Index `idx_tracks_filename`; `pinned_items.icon_name` entfernt |
 | `v11_add_merge_support` | Tabellen `artist_aliases` & `album_aliases` + Indizes; Backfill `album_id` auf Album-Pins |
 | `v12_add_track_fingerprints_table` | Tabelle `track_fingerprints` (1:1 an `tracks`, FK/Cascade); flaggt den resumablen Hintergrundlauf `v12_background_compute_fingerprints` (BPMKit-Analyse der Bibliothek) |
+| `v13_add_mix_class` | Spalte `track_fingerprints.mix_class` (denormalisierte Mix-Klasse via `BPMKit.MixClass.classify`); Backfill bestehender Zeilen aus `mix_version` — trägt den Smart-Playlist-Filter (#16) |
 
-Neue Migrationen werden als `v13_…` in `setupMigrator()` ergänzt (Marker „Future Migrations" am Ende der Funktion).
+Neue Migrationen werden als `v14_…` in `setupMigrator()` ergänzt (Marker „Future Migrations" am Ende der Funktion).
 
 ---
 
@@ -229,10 +230,10 @@ Beide bilden „alter Name → kanonische Entität" ab, damit manuelle Merges ei
 ### `background_migrations` (v7)
 `identifier` (PK) · `completed_at` · `progress` · `resumable` (default 1)
 
-### `track_fingerprints` (v12, [ComputedFingerprint.swift](../Models/Core/ComputedFingerprint.swift))
-`track_id` (PK, FK→`tracks`, `ON DELETE CASCADE`) · `calculated_bpm` · `bpm_confidence` · `rms_loudness_db`* · `dynamic_range_db`* · `spectral_brightness_hz`* · `bass_ratio`* · `mix_version` · `analyzed_at`* *(*=NOT NULL)*
+### `track_fingerprints` (v12/v13, [ComputedFingerprint.swift](../Models/Core/ComputedFingerprint.swift))
+`track_id` (PK, FK→`tracks`, `ON DELETE CASCADE`) · `calculated_bpm` · `bpm_confidence` · `rms_loudness_db`* · `dynamic_range_db`* · `spectral_brightness_hz`* · `bass_ratio`* · `mix_version` · `mix_class` (v13) · `analyzed_at`* *(*=NOT NULL)*
 
-Die **berechnete** (nicht getaggte) Achsenschicht aus `BPMKit`, 1:1 an `tracks` gekoppelt. Quellenbewusst getrennt vom getaggten `tracks.bpm` (§6, Ehrlichkeitsgesetz): der Schätzer landet hier und überschreibt den Tag nie. Gefüllt vom resumablen Hintergrundlauf `v12_background_compute_fingerprints` ([DMFingerprintAnalysis.swift](../Managers/Database/DMFingerprintAnalysis.swift)). Löst die in §5/§9 empfohlene Hebung der titelgenauen Achsen aus der separaten `fingerprints.db` in die App-DB.
+Die **berechnete** (nicht getaggte) Achsenschicht aus `BPMKit`, 1:1 an `tracks` gekoppelt. Quellenbewusst getrennt vom getaggten `tracks.bpm` (§6, Ehrlichkeitsgesetz): der Schätzer landet hier und überschreibt den Tag nie. Gefüllt vom resumablen Hintergrundlauf `v12_background_compute_fingerprints` ([DMFingerprintAnalysis.swift](../Managers/Database/DMFingerprintAnalysis.swift)). Löst die in §5/§9 empfohlene Hebung der titelgenauen Achsen aus der separaten `fingerprints.db` in die App-DB. `mix_class` ist die denormalisierte Mix-Klasse (`MixClass.classify`, v13) und trägt zusammen mit `calculated_bpm` und einer bibliotheks-relativen **Energie** die Smart-Playlist-Abfrage (#16, [DMSmartPlaylistQueries.swift](../Managers/Database/DMSmartPlaylistQueries.swift), via optionalem Join `Track.computedFingerprint`).
 
 ### `tracks_fts` (FTS5-Virtualtabelle)
 Spalten: `track_id` (not indexed), `title`, `artist`, `album`, `album_artist`, `composer`, `genre`, `year`. Tokenizer `unicode61` (ohne Porter, ab v4). `rowid` = `tracks.id`. Synchron gehalten über die Trigger `tracks_fts_insert` / `tracks_fts_update` / `tracks_fts_delete`.

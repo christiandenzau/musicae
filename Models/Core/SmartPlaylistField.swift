@@ -20,6 +20,7 @@ enum SmartFieldValueKind {
     case duration  // edited as H:MM:SS, stored as seconds
     case date      // absolute calendar date (time ignored), stored as "yyyy-MM-dd"
     case boolean   // Yes / No
+    case enumSelect // fixed set of choices (e.g. Mix Class), stored as the choice's raw value
 }
 
 enum SmartField: String, CaseIterable, Identifiable {
@@ -42,6 +43,10 @@ enum SmartField: String, CaseIterable, Identifiable {
     case dateAdded
     // Boolean fields
     case isFavorite
+    // Computed audio axes (BPMKit fingerprints, joined from track_fingerprints)
+    case calculatedBpm
+    case energy
+    case mixClass
 
     var id: String { rawValue }
 
@@ -62,6 +67,9 @@ enum SmartField: String, CaseIterable, Identifiable {
         case .lastPlayedDate: return String(localized: "Last Played")
         case .dateAdded: return String(localized: "Date Added")
         case .isFavorite: return String(localized: "Favorite")
+        case .calculatedBpm: return String(localized: "Calculated BPM")
+        case .energy: return String(localized: "Energy (0–100)")
+        case .mixClass: return String(localized: "Mix Class")
         }
     }
 
@@ -69,7 +77,7 @@ enum SmartField: String, CaseIterable, Identifiable {
         switch self {
         case .title, .artist, .album, .albumArtist, .genre, .composer, .filename:
             return .text
-        case .year, .playCount, .trackNumber, .discNumber:
+        case .year, .playCount, .trackNumber, .discNumber, .calculatedBpm, .energy:
             return .number
         case .duration:
             return .duration
@@ -77,12 +85,19 @@ enum SmartField: String, CaseIterable, Identifiable {
             return .date
         case .isFavorite:
             return .boolean
+        case .mixClass:
+            return .enumSelect
         }
     }
 
     /// Operators valid for this field, in display order. Mirrors what the backend
     /// `buildExpression` resolves to a real SQL predicate for the field's type.
     var operators: [SmartPlaylistCriteria.Condition] {
+        // Energy is a continuous, library-relative score — exact equality is meaningless,
+        // so only offer threshold comparisons.
+        if self == .energy {
+            return [.greaterThanOrEqual, .lessThanOrEqual, .greaterThan, .lessThan]
+        }
         switch valueKind {
         case .text:
             return [.equals, .contains, .startsWith, .endsWith]
@@ -98,6 +113,24 @@ enum SmartField: String, CaseIterable, Identifiable {
             return [.equals, .greaterThan, .lessThan]
         case .boolean:
             return [.equals]
+        case .enumSelect:
+            return [.equals]
+        }
+    }
+
+    /// The fixed choices for an `.enumSelect` field, as (stored raw value, display label).
+    /// The raw values match `BPMKit.MixClass` and the denormalized `track_fingerprints.mix_class`.
+    var enumOptions: [(value: String, label: String)] {
+        switch self {
+        case .mixClass:
+            return [
+                ("extended", String(localized: "Extended")),
+                ("radioEdit", String(localized: "Radio Edit")),
+                ("remix", String(localized: "Remix")),
+                ("original", String(localized: "Original"))
+            ]
+        default:
+            return []
         }
     }
 
@@ -107,6 +140,7 @@ enum SmartField: String, CaseIterable, Identifiable {
         case .text, .number, .duration: return ""
         case .date: return SmartPlaylistDate.string(from: Date())
         case .boolean: return "true"
+        case .enumSelect: return enumOptions.first?.value ?? ""
         }
     }
 
@@ -127,7 +161,7 @@ extension SmartPlaylistCriteria.Condition {
         case .date: return dateLabel
         case .number: return numberLabel
         case .duration: return durationLabel
-        case .text, .boolean: return textLabel
+        case .text, .boolean, .enumSelect: return textLabel
         }
     }
 

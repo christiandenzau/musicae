@@ -33,10 +33,32 @@ extension DatabaseManager {
     func smartPlaylistFilteredQuery(
         _ criteria: SmartPlaylistCriteria,
         artists: [Artist],
-        genres: [Genre]
-    ) -> QueryInterfaceRequest<Track> {
+        genres: [Genre],
+        db: Database
+    ) throws -> QueryInterfaceRequest<Track> {
         var query = applyDuplicateFilter(Track.all())
-        if let whereClause = buildWhereClause(for: criteria, artists: artists, genres: genres) {
+
+        // Rules on the computed axes live in a separate table; join it once (optionally,
+        // so tracks without a fingerprint survive as NULLs and never false-match) and
+        // load the library-relative energy scale only when an energy rule needs it.
+        var fingerprintAlias: TableAlias<ComputedFingerprint>?
+        var energyStats: FingerprintEnergyStats?
+        if criteriaNeedsFingerprints(criteria) {
+            let alias = TableAlias<ComputedFingerprint>()
+            query = query.joining(optional: Track.computedFingerprint.aliased(alias))
+            fingerprintAlias = alias
+            if criteriaNeedsEnergy(criteria) {
+                energyStats = try loadFingerprintEnergyStats(db)
+            }
+        }
+
+        if let whereClause = buildWhereClause(
+            for: criteria,
+            artists: artists,
+            genres: genres,
+            fingerprintAlias: fingerprintAlias,
+            energyStats: energyStats
+        ) {
             query = query.filter(whereClause)
         }
         return query
@@ -49,7 +71,7 @@ extension DatabaseManager {
         genres: [Genre],
         db: Database
     ) throws -> Int {
-        let query = smartPlaylistFilteredQuery(criteria, artists: artists, genres: genres)
+        let query = try smartPlaylistFilteredQuery(criteria, artists: artists, genres: genres, db: db)
         if let limit = criteria.limit {
             return try query.limit(limit).fetchCount(db)
         }
@@ -64,7 +86,7 @@ extension DatabaseManager {
             return try await dbQueue.read { db in
                 let artists = self.criteriaNeedsArtists(criteria) ? try Artist.fetchAll(db) : []
                 let genres = self.criteriaNeedsGenres(criteria) ? try Genre.fetchAll(db) : []
-                return try self.smartPlaylistFilteredQuery(criteria, artists: artists, genres: genres).fetchCount(db)
+                return try self.smartPlaylistFilteredQuery(criteria, artists: artists, genres: genres, db: db).fetchCount(db)
             }
         } catch {
             Logger.error("Failed to count smart playlist matches: \(error)")
@@ -78,7 +100,7 @@ extension DatabaseManager {
         let artists = criteriaNeedsArtists(criteria) ? try Artist.fetchAll(db) : []
         let genres = criteriaNeedsGenres(criteria) ? try Genre.fetchAll(db) : []
 
-        var query = smartPlaylistFilteredQuery(criteria, artists: artists, genres: genres)
+        var query = try smartPlaylistFilteredQuery(criteria, artists: artists, genres: genres, db: db)
         query = applySorting(to: query, criteria: criteria)
         if let limit = criteria.limit {
             query = query.limit(limit)
@@ -119,9 +141,21 @@ extension DatabaseManager {
     }
 
     /// Build WHERE clause from smart playlist criteria
-    internal func buildWhereClause(for criteria: SmartPlaylistCriteria, artists: [Artist], genres: [Genre]) -> SQLExpression? {
+    internal func buildWhereClause(
+        for criteria: SmartPlaylistCriteria,
+        artists: [Artist],
+        genres: [Genre],
+        fingerprintAlias: TableAlias<ComputedFingerprint>?,
+        energyStats: FingerprintEnergyStats?
+    ) -> SQLExpression? {
         let expressions = criteria.rules.compactMap { rule in
-            buildExpression(for: rule, artists: artists, genres: genres)
+            buildExpression(
+                for: rule,
+                artists: artists,
+                genres: genres,
+                fingerprintAlias: fingerprintAlias,
+                energyStats: energyStats
+            )
         }
         
         guard !expressions.isEmpty else { return nil }
@@ -143,7 +177,13 @@ extension DatabaseManager {
     }
     
     /// Build SQL expression for a single rule
-    private func buildExpression(for rule: SmartPlaylistCriteria.Rule, artists: [Artist], genres: [Genre]) -> SQLExpression? {
+    private func buildExpression(
+        for rule: SmartPlaylistCriteria.Rule,
+        artists: [Artist],
+        genres: [Genre],
+        fingerprintAlias: TableAlias<ComputedFingerprint>?,
+        energyStats: FingerprintEnergyStats?
+    ) -> SQLExpression? {
         switch rule.field {
         case "isFavorite":
             return buildBooleanExpression(column: Track.Columns.isFavorite, rule: rule)
@@ -189,6 +229,29 @@ extension DatabaseManager {
 
         case "filename":
             return buildStringExpression(column: Track.Columns.filename, rule: rule)
+
+        case "calculatedBpm":
+            // Joined from track_fingerprints; NULL for tracks without a fingerprint,
+            // which SQL comparisons treat as non-matching (the honest behavior).
+            guard let fingerprintAlias = fingerprintAlias else { return nil }
+            return buildFingerprintNumericExpression(
+                fingerprintAlias[ComputedFingerprint.Columns.calculatedBpm], rule: rule
+            )
+
+        case "energy":
+            // Library-relative score; without stats (empty fingerprint set) there is no
+            // honest match, so the rule contributes nothing.
+            guard let fingerprintAlias = fingerprintAlias, let energyStats = energyStats else { return nil }
+            return buildEnergyExpression(fingerprintAlias: fingerprintAlias, stats: energyStats, rule: rule)
+
+        case "mixClass":
+            guard let fingerprintAlias = fingerprintAlias else { return nil }
+            switch rule.condition {
+            case .equals:
+                return fingerprintAlias[ComputedFingerprint.Columns.mixClass] == rule.value
+            default:
+                return nil
+            }
 
         default:
             Logger.warning("Unsupported smart playlist field: \(rule.field)")
@@ -420,5 +483,122 @@ extension DatabaseManager {
         default:
             return query
         }
+    }
+
+    // MARK: - Computed Fingerprint Axes (#16)
+
+    /// Rule fields that live in `track_fingerprints` and therefore require the join.
+    private static let fingerprintFields: Set<String> = ["calculatedBpm", "energy", "mixClass"]
+
+    /// Whether any rule filters on a computed-fingerprint axis (needs the optional join).
+    func criteriaNeedsFingerprints(_ criteria: SmartPlaylistCriteria) -> Bool {
+        criteria.rules.contains { Self.fingerprintFields.contains($0.field) }
+    }
+
+    /// Whether any rule filters on the library-relative energy score (needs the min/max stats).
+    private func criteriaNeedsEnergy(_ criteria: SmartPlaylistCriteria) -> Bool {
+        criteria.rules.contains { $0.field == "energy" }
+    }
+
+    /// Per-axis min/max across all fingerprints, for the 0…1 energy normalization. `nil`
+    /// when no fingerprints exist yet. Loudness/bass/dynamics are NOT NULL columns (their
+    /// min/max are non-null once any row exists); BPM can be entirely null.
+    struct FingerprintEnergyStats {
+        let minLoud: Double, maxLoud: Double
+        let minBass: Double, maxBass: Double
+        let minDyn: Double, maxDyn: Double
+        let minBpm: Double?, maxBpm: Double?
+    }
+
+    private func loadFingerprintEnergyStats(_ db: Database) throws -> FingerprintEnergyStats? {
+        let sql = """
+            SELECT MIN(rms_loudness_db) AS min_loud, MAX(rms_loudness_db) AS max_loud,
+                   MIN(bass_ratio) AS min_bass, MAX(bass_ratio) AS max_bass,
+                   MIN(dynamic_range_db) AS min_dyn, MAX(dynamic_range_db) AS max_dyn,
+                   MIN(calculated_bpm) AS min_bpm, MAX(calculated_bpm) AS max_bpm
+            FROM track_fingerprints
+            """
+        // With zero rows every aggregate is NULL, so a nil loudness means "no fingerprints".
+        guard let row = try Row.fetchOne(db, sql: sql),
+              let minLoud = row["min_loud"] as Double? else {
+            return nil
+        }
+        return FingerprintEnergyStats(
+            minLoud: minLoud, maxLoud: row["max_loud"],
+            minBass: row["min_bass"], maxBass: row["max_bass"],
+            minDyn: row["min_dyn"], maxDyn: row["max_dyn"],
+            minBpm: row["min_bpm"], maxBpm: row["max_bpm"]
+        )
+    }
+
+    /// Numeric comparison against a (nullable) joined fingerprint expression. Mirrors
+    /// `buildNumericExpression`; a NULL column yields a NULL (non-matching) comparison, so
+    /// tracks without a fingerprint never match.
+    private func buildFingerprintNumericExpression(
+        _ expression: SQLExpression,
+        rule: SmartPlaylistCriteria.Rule
+    ) -> SQLExpression? {
+        guard let value = Double(rule.value) else { return nil }
+        switch rule.condition {
+        case .equals:
+            return expression >= value && expression < value + 1
+        case .greaterThan:
+            return expression > value
+        case .greaterThanOrEqual:
+            return expression >= value
+        case .lessThan:
+            return expression < value
+        case .lessThanOrEqual:
+            return expression <= value
+        default:
+            return nil
+        }
+    }
+
+    /// Threshold comparison against the library-relative energy score (UI value 0…100).
+    private func buildEnergyExpression(
+        fingerprintAlias: TableAlias<ComputedFingerprint>,
+        stats: FingerprintEnergyStats,
+        rule: SmartPlaylistCriteria.Rule
+    ) -> SQLExpression? {
+        guard let percent = Double(rule.value) else { return nil }
+        let threshold = percent / 100.0
+        let energy = energySQLExpression(fingerprintAlias: fingerprintAlias, stats: stats)
+        switch rule.condition {
+        case .greaterThan:
+            return energy > threshold
+        case .greaterThanOrEqual:
+            return energy >= threshold
+        case .lessThan:
+            return energy < threshold
+        case .lessThanOrEqual:
+            return energy <= threshold
+        default:
+            return nil
+        }
+    }
+
+    /// The energy score as a SQL expression: loud + fast + bass-heavy + low-dynamics, each
+    /// min/max-normalized to 0…1 and equally weighted — the same formula as
+    /// `BPMKit.FingerprintDataset.energy`, evaluated against the joined fingerprint row.
+    private func energySQLExpression(fingerprintAlias fp: TableAlias<ComputedFingerprint>, stats: FingerprintEnergyStats) -> SQLExpression {
+        // (value - min)/(max - min); a degenerate range collapses to a neutral 0.5,
+        // matching BPMKit's MinMax.normalize.
+        func norm(_ expression: SQLExpression, _ min: Double, _ max: Double) -> SQLExpression {
+            max > min ? (expression - min) / (max - min) : 0.5.sqlExpression
+        }
+        let loud = norm(fp[ComputedFingerprint.Columns.rmsLoudnessDb], stats.minLoud, stats.maxLoud)
+        let bass = norm(fp[ComputedFingerprint.Columns.bassRatio], stats.minBass, stats.maxBass)
+        let dynamic = norm(fp[ComputedFingerprint.Columns.dynamicRangeDb], stats.minDyn, stats.maxDyn)
+
+        let fast: SQLExpression
+        if let minBpm = stats.minBpm, let maxBpm = stats.maxBpm, maxBpm > minBpm {
+            // BPMKit substitutes the band minimum for tracks without a detected tempo.
+            fast = ((fp[ComputedFingerprint.Columns.calculatedBpm] ?? minBpm) - minBpm) / (maxBpm - minBpm)
+        } else {
+            fast = 0.5.sqlExpression
+        }
+
+        return (loud + fast + bass + (1.0 - dynamic)) / 4.0
     }
 }

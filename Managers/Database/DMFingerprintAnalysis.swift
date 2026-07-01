@@ -189,6 +189,9 @@ extension DatabaseManager {
             spectralBrightnessHz: axes.spectralBrightnessHz,
             bassRatio: axes.bassRatio,
             mixVersion: mixVersion,
+            // Denormalized once here from the single classification source, so the
+            // smart-playlist query can filter on it directly (#16).
+            mixClass: MixClass.classify(mixVersion).rawValue,
             analyzedAt: analyzedAt
         )
     }
