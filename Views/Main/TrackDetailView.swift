@@ -5,6 +5,7 @@ struct TrackDetailView: View {
     let onClose: () -> Void
     
     @State private var fullTrack: FullTrack?
+    @State private var fingerprint: ComputedFingerprint?
     @State private var isLoading = true
     @State private var gradientColors: [Color] = []
 
@@ -65,6 +66,15 @@ struct TrackDetailView: View {
                                 metadataSection(title: String(localized: "Details"), items: items)
                             }
 
+                            // Natively computed analysis — kept separate from the
+                            // tagged values above (honesty law).
+                            if let fingerprint = fingerprint {
+                                let analysisItems = calculatedAnalysisItems(for: fingerprint)
+                                if !analysisItems.isEmpty {
+                                    metadataSection(title: String(localized: "Calculated Analysis"), items: analysisItems)
+                                }
+                            }
+
                             // Collapsible File Details section
                             FileDetailsSection(fullTrack: fullTrack)
                         }
@@ -95,6 +105,7 @@ struct TrackDetailView: View {
             if oldId != newId {
                 isLoading = true
                 fullTrack = nil
+                fingerprint = nil
                 loadFullTrack()
                 updateGradientColors()
             }
@@ -120,11 +131,14 @@ struct TrackDetailView: View {
     private func loadFullTrack() {
         Task {
             do {
-                if var loaded = try await track.fullTrack(using: libraryManager.databaseManager.dbQueue) {
+                let dbQueue = libraryManager.databaseManager.dbQueue
+                let loadedFingerprint = try? await track.computedFingerprint(using: dbQueue)
+                if var loaded = try await track.fullTrack(using: dbQueue) {
                     libraryManager.databaseManager.populateAlbumArtworkForFullTrack(&loaded)
-                    
+
                     await MainActor.run {
                         self.fullTrack = loaded
+                        self.fingerprint = loadedFingerprint
                         self.isLoading = false
                     }
                 } else {
@@ -362,6 +376,32 @@ struct TrackDetailView: View {
         if fullTrack.compilation {
             items.append((String(localized: "Compilation"), String(localized: "Yes")))
         }
+    }
+
+    // MARK: - Calculated Analysis
+
+    /// Natively computed axes (BPMKit). The estimated BPM is labeled and kept
+    /// apart from the tagged `BPM` above — it never claims to be the tag.
+    private func calculatedAnalysisItems(for fingerprint: ComputedFingerprint) -> [(label: String, value: String)] {
+        var items: [(label: String, value: String)] = []
+
+        if let bpm = fingerprint.calculatedBpm {
+            items.append((String(localized: "Calculated BPM"), String(format: "%.0f", bpm)))
+            if let confidence = fingerprint.bpmConfidence {
+                items.append((String(localized: "BPM Confidence"), String(format: "%.0f%%", confidence * 100)))
+            }
+        }
+
+        items.append((String(localized: "Loudness"), String(format: "%.1f dBFS", fingerprint.rmsLoudnessDb)))
+        items.append((String(localized: "Dynamics"), String(format: "%.1f dB", fingerprint.dynamicRangeDb)))
+        items.append((String(localized: "Brightness"), String(format: "%.0f Hz", fingerprint.spectralBrightnessHz)))
+        items.append((String(localized: "Bass"), String(format: "%.0f%%", fingerprint.bassRatio * 100)))
+
+        if let mixVersion = fingerprint.mixVersion, !mixVersion.isEmpty {
+            items.append((String(localized: "Mix Version"), mixVersion))
+        }
+
+        return items
     }
 
     // MARK: - Helper Methods

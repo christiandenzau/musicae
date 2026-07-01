@@ -45,6 +45,8 @@ extension DatabaseManager {
                 await convertArtworkToHEIC(progress: progress)
             case Self.knownArtistsMigrationIdentifier:
                 await loadKnownArtistsAndRebuild(progress: progress)
+            case Self.fingerprintMigrationIdentifier:
+                await computeTrackFingerprints(progress: progress)
             default:
                 Logger.warning("Unknown background migration: \(identifier)")
             }

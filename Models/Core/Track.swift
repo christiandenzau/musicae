@@ -324,4 +324,18 @@ extension Track {
                 .fetchOne(db)
         }
     }
+
+    /// Fetches the natively computed audio fingerprint (BPMKit axes + estimated
+    /// BPM), if one has been analyzed yet.
+    /// - Parameter dbQueue: Database queue
+    /// - Returns: the `ComputedFingerprint`, or nil if not analyzed
+    func computedFingerprint(using dbQueue: DatabaseQueue) async throws -> ComputedFingerprint? {
+        guard let trackId = trackId else { return nil }
+
+        return try await dbQueue.read { db in
+            try ComputedFingerprint
+                .filter(ComputedFingerprint.Columns.trackId == trackId)
+                .fetchOne(db)
+        }
+    }
 }

@@ -17,6 +17,12 @@ import PackageDescription
 let package = Package(
     name: "BPMDetector",
     platforms: [.macOS(.v13)],
+    products: [
+        // Nur die reine Analysebibliothek ist nach außen konsumierbar — sie wird
+        // vom Musicae-App-Target gelinkt (Phase 5a, #15). Das `bpmdetect`-Executable
+        // bleibt ein rein internes CLI-Frontend und wird bewusst nicht exponiert.
+        .library(name: "BPMKit", targets: ["BPMKit"]),
+    ],
     dependencies: [
         // Dieselbe Persistenzschicht wie die Musicae-App (dort 7.11.0).
         .package(url: "https://github.com/groue/GRDB.swift", from: "7.11.0"),

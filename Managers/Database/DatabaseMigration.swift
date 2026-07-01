@@ -213,8 +213,20 @@ enum DatabaseMigrator {
             Logger.info("v11_add_merge_support migration completed")
         }
 
+        migrator.registerMigration("v12_add_track_fingerprints_table") { db in
+            // Additive, reversible table for the natively computed audio axes; the
+            // tagged facts in `tracks` stay untouched (honesty law, Schema-Karte §6).
+            try DatabaseManager.createTrackFingerprintsTable(in: db)
+            // Flag the resumable background run that fills it for the whole library.
+            try db.execute(
+                sql: "INSERT INTO background_migrations (identifier, resumable) VALUES (?, ?)",
+                arguments: ["v12_background_compute_fingerprints", true]
+            )
+            Logger.info("v12_add_track_fingerprints_table migration completed")
+        }
+
         // MARK: - Future Migrations
-        // Add new migrations here as: migrator.registerMigration("v12_description") { db in ... }
+        // Add new migrations here as: migrator.registerMigration("v13_description") { db in ... }
 
         return migrator
     }

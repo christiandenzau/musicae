@@ -312,6 +312,26 @@ extension DatabaseManager {
         Logger.info("Created `album_aliases` table")
     }
 
+    // MARK: - Track Fingerprints Table
+    // Holds the natively computed audio axes (BPMKit) per track: estimated BPM +
+    // confidence, loudness, dynamics, brightness, bass and the parsed mix version.
+    // Keyed 1:1 on `tracks.id` (FK, cascade). Source-aware and reversible — the
+    // tagged `tracks.bpm` and other hard facts stay untouched (honesty law).
+    static func createTrackFingerprintsTable(in db: Database) throws {
+        try db.createTableIfNotExists("track_fingerprints") { t in
+            t.column("track_id", .integer).primaryKey().references("tracks", onDelete: .cascade)
+            t.column("calculated_bpm", .double)
+            t.column("bpm_confidence", .double)
+            t.column("rms_loudness_db", .double).notNull()
+            t.column("dynamic_range_db", .double).notNull()
+            t.column("spectral_brightness_hz", .double).notNull()
+            t.column("bass_ratio", .double).notNull()
+            t.column("mix_version", .text)
+            t.column("analyzed_at", .datetime).notNull()
+        }
+        Logger.info("Created `track_fingerprints` table")
+    }
+
     // MARK: - FTS5 Search Table
     static func createFTSTable(in db: Database) throws {
         // Create FTS5 virtual table for tracks

@@ -11,6 +11,7 @@
 		552CE3E52FE3263900A5C93D /* Crescendo in Frameworks */ = {isa = PBXBuildFile; productRef = 552CE3E42FE3263900A5C93D /* Crescendo */; };
 		5590877F2DE0C078009E7719 /* MusicaeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5590877E2DE0C078009E7719 /* MusicaeApp.swift */; };
 		55B0DEC12DE3A58400A41ED9 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 55B0DEC02DE3A58400A41ED9 /* GRDB */; };
+		0FEBF910D544F74F81C33FDD /* BPMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50ADC01909D081A8A7E5F69A /* BPMKit */; };
 		55D673CF2E42CEA50095A358 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 55D673CE2E42CEA50095A358 /* Sparkle */; };
 /* End PBXBuildFile section */
 
@@ -100,6 +101,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				55B0DEC12DE3A58400A41ED9 /* GRDB in Frameworks */,
+				0FEBF910D544F74F81C33FDD /* BPMKit in Frameworks */,
 				552A58402EC0629A00F6D8C0 /* SFBAudioEngine in Frameworks */,
 				55D673CF2E42CEA50095A358 /* Sparkle in Frameworks */,
 				552CE3E52FE3263900A5C93D /* Crescendo in Frameworks */,
@@ -158,6 +160,7 @@
 			name = Musicae;
 			packageProductDependencies = (
 				55B0DEC02DE3A58400A41ED9 /* GRDB */,
+				50ADC01909D081A8A7E5F69A /* BPMKit */,
 				55D673CE2E42CEA50095A358 /* Sparkle */,
 				552A583F2EC0629A00F6D8C0 /* SFBAudioEngine */,
 				552CE3E42FE3263900A5C93D /* Crescendo */,
@@ -195,6 +198,7 @@
 				55D673CD2E42CEA50095A358 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				552A583E2EC0629A00F6D8C0 /* XCRemoteSwiftPackageReference "SFBAudioEngine" */,
 				552CE3E32FE3263900A5C93D /* XCRemoteSwiftPackageReference "CrescendoKit" */,
+				CD4F38C3B596E28E5A17CF4F /* XCLocalSwiftPackageReference "BPMDetector" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 550F4A052DB45B1A005F794E;
@@ -468,6 +472,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		CD4F38C3B596E28E5A17CF4F /* XCLocalSwiftPackageReference "BPMDetector" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Tools/BPMDetector;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		552A583E2EC0629A00F6D8C0 /* XCRemoteSwiftPackageReference "SFBAudioEngine" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -504,6 +515,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		50ADC01909D081A8A7E5F69A /* BPMKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CD4F38C3B596E28E5A17CF4F /* XCLocalSwiftPackageReference "BPMDetector" */;
+			productName = BPMKit;
+		};
 		552A583F2EC0629A00F6D8C0 /* SFBAudioEngine */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 552A583E2EC0629A00F6D8C0 /* XCRemoteSwiftPackageReference "SFBAudioEngine" */;
