@@ -28,6 +28,9 @@ enum TrackContextMenu {
         // Add "Similar Tracks" (filter-distance neighbours from the computed fingerprints)
         items.append(createSimilarTracksItem(for: track))
 
+        // Add "Relationships" (the MusicBrainz thread from Phase 4)
+        items.append(createRelationshipsItem(for: track))
+
         items.append(.divider)
         
         // Add playlist items
@@ -96,6 +99,9 @@ enum TrackContextMenu {
         // Add "Similar Tracks" (filter-distance neighbours from the computed fingerprints)
         items.append(createSimilarTracksItem(for: track))
 
+        // Add "Relationships" (the MusicBrainz thread from Phase 4)
+        items.append(createRelationshipsItem(for: track))
+
         items.append(.divider)
         
         // Add playlist items
@@ -114,6 +120,14 @@ enum TrackContextMenu {
     private static func createSimilarTracksItem(for track: Track) -> ContextMenuItem {
         .button(title: String(localized: "Similar Tracks"), icon: "waveform") {
             NotificationCenter.default.post(name: .showSimilarTracks, object: nil, userInfo: ["track": track])
+        }
+    }
+
+    /// Posts a request to show the track's MusicBrainz relationship thread (#18); ContentView
+    /// walks the stored graph from the recording MBID and presents it.
+    private static func createRelationshipsItem(for track: Track) -> ContextMenuItem {
+        .button(title: String(localized: "Relationships"), icon: "point.3.connected.trianglepath.dotted") {
+            NotificationCenter.default.post(name: .showRelationships, object: nil, userInfo: ["track": track])
         }
     }
 

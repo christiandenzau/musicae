@@ -81,6 +81,10 @@ struct ContentView: View {
     // track context menu.
     @State private var similarTracksRequest: SimilarTracksRequest?
 
+    // Relationships sheet (#18): set by the `.showRelationships` notification from the
+    // track context menu.
+    @State private var relationshipsRequest: RelationshipsRequest?
+
     @ObservedObject private var notificationManager = NotificationManager.shared
 
     init() {
@@ -220,9 +224,18 @@ struct ContentView: View {
                 .environmentObject(playlistManager)
                 .environmentObject(playbackManager)
         }
+        .sheet(item: $relationshipsRequest) { request in
+            RelationshipsView(request: request)
+                .environmentObject(libraryManager)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .showSimilarTracks)) { notification in
             if let track = notification.userInfo?["track"] as? Track, let trackId = track.trackId {
                 similarTracksRequest = SimilarTracksRequest(anchorTrackId: trackId, anchorTitle: track.title)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showRelationships)) { notification in
+            if let track = notification.userInfo?["track"] as? Track, let trackId = track.trackId {
+                relationshipsRequest = RelationshipsRequest(anchorTrackId: trackId, anchorTitle: track.title)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .importPlaylists)) { _ in

@@ -20,6 +20,10 @@ struct IntegrationsTabView: View {
     @State private var showLoveSyncInfo = false
     @State private var showDisconnectConfirmation = false
 
+    // MusicBrainz relations graph (#18): manual, online, rate-limited load.
+    @State private var isIngestingRelations = false
+    @State private var relationsStats: DatabaseManager.RelationsGraphStats?
+
     private var isConnected: Bool {
         !lastfmUsername.isEmpty
     }
@@ -45,10 +49,19 @@ struct IntegrationsTabView: View {
             } header: {
                 Text("Lyrics & Metadata")
             }
+
+            Section {
+                musicBrainzRelationsSection
+            } header: {
+                Text("MusicBrainz")
+            }
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
         .padding(5)
+        .task {
+            relationsStats = await AppCoordinator.shared?.libraryManager.databaseManager.relationsGraphStats() ?? nil
+        }
         .alert("Disconnect from Last.fm?", isPresented: $showDisconnectConfirmation) {
             Button("Cancel", role: .cancel) { }
             Button("Disconnect", role: .destructive) {
@@ -182,7 +195,66 @@ struct IntegrationsTabView: View {
         }
     }
 
+    // MARK: - MusicBrainz Relations Section
+
+    /// Manual, online load of the relationship graph (#18): fetch how the library's tracks
+    /// connect on MusicBrainz (releases, remixes, cover origins) and store it beside the
+    /// main DB. Rate-limited to ~1 request/second, so a large library takes a while;
+    /// detailed progress shows in the activity indicator, this button just reflects "running".
+    private var musicBrainzRelationsSection: some View {
+        Group {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Track relationships")
+                        .font(.system(size: 13, weight: .medium))
+                    if let stats = relationsStats {
+                        Text("\(stats.entities) entities · \(stats.edges) relationships")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("Not loaded yet")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                Button(action: loadRelationships) {
+                    if isIngestingRelations {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                            .frame(width: 70)
+                    } else {
+                        Text(relationsStats == nil ? "Load" : "Update")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(isIngestingRelations)
+            }
+            .padding(.vertical, 4)
+
+            Text("Fetches how your tracks connect on MusicBrainz — the release each appears on, remixes, cover origins. Runs online at about one request per second, so a large library takes a while. Then use \u{201C}Relationships\u{201D} in a track\u{2019}s context menu.")
+                .font(.system(size: 11))
+                .foregroundColor(.secondary)
+        }
+    }
+
     // MARK: - Actions
+
+    private func loadRelationships() {
+        guard let databaseManager = AppCoordinator.shared?.libraryManager.databaseManager else { return }
+        isIngestingRelations = true
+        Task {
+            await databaseManager.ingestRelations()
+            let stats = await databaseManager.relationsGraphStats()
+            await MainActor.run {
+                relationsStats = stats
+                isIngestingRelations = false
+            }
+        }
+    }
 
     private func startAuthentication() {
         guard let scrobbleManager = AppCoordinator.shared?.scrobbleManager,

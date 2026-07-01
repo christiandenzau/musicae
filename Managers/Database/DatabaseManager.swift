@@ -16,6 +16,11 @@ class DatabaseManager: ObservableObject {
 
     let dbQueue: DatabaseQueue
     private let dbPath: String
+    /// Path of the MusicBrainz relations graph (#18), kept beside `musicae.db` in the same
+    /// app-support folder. A separate SQLite file managed by BPMKit's `RelationStore` — no
+    /// ATTACH and no migration of the main schema, so it stays gekapselt and reversible
+    /// (delete the file to reset). Empty until the user runs the load in Settings.
+    let relationsDBPath: String
     private var lastStatusUpdateTime: Date = .distantPast
     private let statusUpdateInterval: TimeInterval = 0.5
 
@@ -40,6 +45,10 @@ class DatabaseManager: ObservableObject {
 
         let dbFilename = bundleID.hasSuffix(".debug") ? "musicae-debug.db" : "musicae.db"
         dbPath = appDirectory.appendingPathComponent(dbFilename).path
+
+        // MusicBrainz relations graph lives beside the main DB, in its own file (#18).
+        let relationsFilename = bundleID.hasSuffix(".debug") ? "musicae-relations-debug.db" : "musicae-relations.db"
+        relationsDBPath = appDirectory.appendingPathComponent(relationsFilename).path
 
         // Configure database before creating the queue
         var config = Configuration()
