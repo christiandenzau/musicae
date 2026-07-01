@@ -18,7 +18,8 @@ final class FingerprintQueryTests: XCTestCase {
         loudness: Double = -12,
         bpm: Double? = 130,
         bass: Double = 0.3,
-        dynamic: Double = 6
+        dynamic: Double = 6,
+        brightness: Double = 1200
     ) -> TrackFingerprint {
         TrackFingerprint(
             path: path,
@@ -29,7 +30,7 @@ final class FingerprintQueryTests: XCTestCase {
             durationSeconds: duration,
             bpm: bpm,
             bpmConfidence: bpm == nil ? nil : 0.8,
-            axes: AudioAxes(rmsLoudnessDb: loudness, dynamicRangeDb: dynamic, spectralBrightnessHz: 1200, bassRatio: bass),
+            axes: AudioAxes(rmsLoudnessDb: loudness, dynamicRangeDb: dynamic, spectralBrightnessHz: brightness, bassRatio: bass),
             mixVersion: mix,
             analyzedAt: Date()
         )
@@ -133,5 +134,24 @@ final class FingerprintQueryTests: XCTestCase {
         XCTAssertEqual(neighbors.count, 2)
         // Aufsteigende Distanz.
         XCTAssertLessThanOrEqual(neighbors[0].distance, neighbors[1].distance)
+    }
+
+    func testNeighborsPreferSimilarBrightness() {
+        // Anker und beide Kandidaten sind in Ära, Energie, Mix und Länge identisch —
+        // sie unterscheiden sich nur in der Klangfarbe (spektrale Helligkeit). Der
+        // klanglich nähere Titel muss vor dem dunkleren liegen. Genau der Fall, der
+        // hellen Synth-Dance vom dunkleren, sprachlastigen Material trennt, ohne sich
+        // auf Genre-Tags zu verlassen.
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: "Extended Mix", brightness: 1400)
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("sameColour", year: 1996, duration: 300, mix: "Extended Mix", brightness: 1400),
+            makeFingerprint("darker", year: 1996, duration: 300, mix: "Extended Mix", brightness: 600)
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertEqual(neighbors.first?.track.path, "sameColour")
+        let sameDistance = neighbors.first { $0.track.path == "sameColour" }?.distance ?? .infinity
+        let darkerDistance = neighbors.first { $0.track.path == "darker" }?.distance ?? .infinity
+        XCTAssertLessThan(sameDistance, darkerDistance)
     }
 }

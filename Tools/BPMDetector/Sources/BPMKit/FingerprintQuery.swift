@@ -93,6 +93,7 @@ public final class FingerprintDataset {
     private let bpm: MinMax
     private let bass: MinMax
     private let dynamic: MinMax
+    private let brightness: MinMax
 
     public init(tracks: [TrackFingerprint]) {
         self.tracks = tracks
@@ -100,6 +101,7 @@ public final class FingerprintDataset {
         bpm = MinMax(tracks.compactMap(\.bpm))
         bass = MinMax(tracks.map(\.bassRatio))
         dynamic = MinMax(tracks.map(\.dynamicRangeDb))
+        brightness = MinMax(tracks.map(\.spectralBrightnessHz))
     }
 
     // MARK: Energie
@@ -151,7 +153,8 @@ public final class FingerprintDataset {
     }
 
     /// Gewichtete Distanz: Ära am schwersten (die Empfehlung soll in der Zeit
-    /// bleiben), dann Energie, dann Mix-Art und Länge.
+    /// bleiben), dann die zwei akustischen Klang-Achsen (Energie und Klangfarbe),
+    /// dann Mix-Art und Länge.
     private func distance(anchor: TrackFingerprint, anchorEnergy: Double, to candidate: TrackFingerprint) -> Double {
         var sum = 0.0
 
@@ -164,6 +167,12 @@ public final class FingerprintDataset {
 
         // Energie: ähnliche Treibkraft.
         sum += 2.0 * abs(energy(of: candidate) - anchorEnergy)
+
+        // Klangfarbe (spektrale Helligkeit): trennt hellen, synthetischen Dance vom
+        // dunkleren, sprachlastigen Material — rein akustisch, unabhängig von der
+        // Tag-Qualität (Genre-Tags in Compilations sind oft pauschal oder leer).
+        // Datensatz-relativ normiert wie die Energie.
+        sum += 2.0 * abs(brightness.normalize(candidate.spectralBrightnessHz) - brightness.normalize(anchor.spectralBrightnessHz))
 
         // Mix-Art: gleiche Klasse ist gut, sonst voller Teilbeitrag.
         sum += 1.0 * (candidate.mixClass == anchor.mixClass ? 0 : 1)
