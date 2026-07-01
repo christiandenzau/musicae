@@ -26,6 +26,20 @@ Vorhanden: BPM, Helligkeit, Bass. Aus dem Datenmodell folgen noch die übrigen r
 
 **Die schwere Achse, klangliche Charakteristik.** Was du an Musik liebst, analoge Synthesizer-Sounds, treibende Beats, üppige Streicherflächen, ist Klangfarbe und Textur, und die ist heute nur schwer und unzuverlässig zu rechnen. Die MFCCs fangen einen Teil davon, ein Etikett wie analoger Synthesizer fängt keiner sauber. Ehrliche Einordnung, das gehört vorerst nicht in die gerechneten Achsen, sondern ins Nutzerprofil als selbst genannte Vorliebe, und vielleicht eines Tages in ein trainiertes Modell. Tu nicht so, als sei es schon rechenbar.
 
+### Konkreter Weg zur Genre-Neigung (Phase 5b, geplant)
+
+Aus der Arbeit an „Ähnliche Titel" (Phase 5a) folgte ein harter, datenbelegter Befund: An einer Dance-lastigen Bibliothek trennen die bisherigen Achsen (BPM, Lautheit, Dynamik, Helligkeit, Bass) einen Rock-Titel akustisch **nicht** von Eurodance — bei ähnlichem Tempo und moderner, durchkomprimierter Produktion sind ihre Werte fast gleich (Spin Doctors vs. 2 Unlimited: Dynamik 4.2 vs. 3.9 dB, Brightness 1433 vs. 1398 Hz). Ein Rock-Anker bekommt deshalb Dance-Nachbarn, und weder Gewichtung noch ein Distanz-Cutoff lösen das — die Fremdkörper liegen *unter* den Allernächsten. Es fehlt eine **Klangtextur-Achse** (Gitarre vs. Synth).
+
+**Die Weichenstellung: Neigung, nicht Fakten.** Um Dance von Rock zu unterscheiden, müssen wir nicht wissen, *welches Instrument spielt* — das wäre neuronale Quellentrennung (Demucs/Spleeter, Python/GPU, offline), ein Überbau für einen Fakt, den die Empfehlung nicht braucht. Wir brauchen nur billige, lokal gerechnete Merkmale, die mit dem Unterschied *korrelieren*, und eine weiche **Neigung** daraus — ~80 % der Unterscheidung zu einem Bruchteil der Kosten.
+
+Gestaffelt, jede Stufe eine weiche Achse (nie ein Urteil):
+
+- **Stufe 0 — Genre-Familie aus Tags** ([#22](https://github.com/christiandenzau/musicae/issues/22)): grob normalisierte Familie (dance/rock/pop/…) aus `tracks.genre`, leer = neutral. Sofort, kein DSP, keine Re-Analyse — löst den belegten Spin-Doctors-Fall (Dance-Fremdkörper fallen aus der Rock-Nachbarschaft).
+- **Stufe 1 — billige Timbre-Merkmale** ([#23](https://github.com/christiandenzau/musicae/issues/23)): harmonisch-perkussives Verhältnis (HPSS, das stärkste Signal) und spektrale Flachheit; die Pulsklarheit ist als `bpm_confidence` schon da. Tag-unabhängig, reine vDSP auf der vorhandenen FFT.
+- **Stufe 2a — MFCC-Klangfarben-Vektor** ([#24](https://github.com/christiandenzau/musicae/issues/24)): der kompakte Merkmalsvektor, Input für die gelernte Schicht.
+- **Stufe 2b — gelernte Genre-Neigung** ([#25](https://github.com/christiandenzau/musicae/issues/25)): aus den gut-getaggten Titeln der eigenen Bibliothek Genre-Zentroide bilden oder einen kleinen Create-ML-Klassifikator (Apple-nativ, `SoundAnalysis`) trainieren → Neigung **plus Konfidenz** je Titel, plus Markierung von Fehl-Tags. Die selbst-lernende Cluster-Idee — sie greift erst, wenn Stufe 1 die Achsen liefert, die tatsächlich trennen.
+- **Stufe 3 — neuronale Quellentrennung: bewusst nicht.** Nur nötig für diskrete Fakten (hat Gesang/Gitarre), die die Empfehlung nicht braucht.
+
 ## 2. Das Nutzerprofil und Onboarding
 
 Bevor die Bibliothek ganz integriert ist, kann der Nutzer dir schon viel über sich geben, und daraus baust du einen Geschmacks-Fingerprint, der das Organisieren und die algorithmische Analyse im Hintergrund von Anfang an verbessert.
