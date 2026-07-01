@@ -143,19 +143,23 @@ public final class FingerprintDataset {
     /// Die `limit` nächsten Nachbarn zum Anker, aufsteigend nach Distanz. Der
     /// Anker selbst (gleicher Pfad) ist ausgeschlossen.
     public func neighbors(of anchor: TrackFingerprint, limit: Int = 10) -> [FingerprintNeighbor] {
-        let anchorEnergy = energy(of: anchor)
-        return tracks
+        tracks
             .filter { $0.path != anchor.path }
-            .map { FingerprintNeighbor(track: $0, distance: distance(anchor: anchor, anchorEnergy: anchorEnergy, to: $0)) }
+            .map { FingerprintNeighbor(track: $0, distance: distance(anchor: anchor, to: $0)) }
             .sorted { $0.distance < $1.distance }
             .prefix(limit)
             .map { $0 }
     }
 
-    /// Gewichtete Distanz: Ära am schwersten (die Empfehlung soll in der Zeit
-    /// bleiben), dann die zwei akustischen Klang-Achsen (Energie und Klangfarbe),
-    /// dann Mix-Art und Länge.
-    private func distance(anchor: TrackFingerprint, anchorEnergy: Double, to candidate: TrackFingerprint) -> Double {
+    /// Gewichtete Distanz: die Ära führt (die Empfehlung soll in der Zeit bleiben),
+    /// darunter die einzelnen akustischen Klang-Achsen — Dynamik, Bass, Klangfarbe und
+    /// Lautheit zählen **getrennt**, damit sich die Unterschiede, die Stile trennen,
+    /// akkumulieren statt sich in einer gemittelten „Energie" auszugleichen. Alles
+    /// datensatz-relativ normiert und rein akustisch (unabhängig von der Tag-Qualität —
+    /// Genre-Tags in Compilations sind oft pauschal oder leer). Der BPM bleibt bewusst
+    /// draußen: er ist auf das Eurodance-Band (120–150) begrenzt und trennt Nicht-Dance
+    /// daher nicht.
+    private func distance(anchor: TrackFingerprint, to candidate: TrackFingerprint) -> Double {
         var sum = 0.0
 
         // Ära (Jahr): ±5 Jahre spannen die volle Teil-Distanz auf.
@@ -165,14 +169,14 @@ public final class FingerprintDataset {
             sum += 3.0 * 0.5   // unbekanntes Jahr: mittlere, nicht maximale Strafe
         }
 
-        // Energie: ähnliche Treibkraft.
-        sum += 2.0 * abs(energy(of: candidate) - anchorEnergy)
-
-        // Klangfarbe (spektrale Helligkeit): trennt hellen, synthetischen Dance vom
-        // dunkleren, sprachlastigen Material — rein akustisch, unabhängig von der
-        // Tag-Qualität (Genre-Tags in Compilations sind oft pauschal oder leer).
-        // Datensatz-relativ normiert wie die Energie.
-        sum += 2.0 * abs(brightness.normalize(candidate.spectralBrightnessHz) - brightness.normalize(anchor.spectralBrightnessHz))
+        // Klang-Charakter: die drei Achsen, die Stil/Genre am stärksten tragen —
+        // Dynamik (Sprach-/Transienten-Struktur vs. durchlaufender Four-on-the-Floor),
+        // Bass-Anteil und Klangfarbe. Einzeln gewichtet, damit sie sich addieren.
+        sum += 1.5 * axisDistance(dynamic, anchor.dynamicRangeDb, candidate.dynamicRangeDb)
+        sum += 1.5 * axisDistance(bass, anchor.bassRatio, candidate.bassRatio)
+        sum += 1.5 * axisDistance(brightness, anchor.spectralBrightnessHz, candidate.spectralBrightnessHz)
+        // Lautheit: schwächeres, Mastering-abhängiges Signal — zählt mit, aber leichter.
+        sum += 1.0 * axisDistance(loudness, anchor.rmsLoudnessDb, candidate.rmsLoudnessDb)
 
         // Mix-Art: gleiche Klasse ist gut, sonst voller Teilbeitrag.
         sum += 1.0 * (candidate.mixClass == anchor.mixClass ? 0 : 1)
@@ -181,6 +185,11 @@ public final class FingerprintDataset {
         sum += 1.0 * min(1, abs(candidate.durationSeconds - anchor.durationSeconds) / 120.0)
 
         return sum
+    }
+
+    /// Betrag der Differenz einer Achse, auf 0…1 datensatz-relativ normiert.
+    private func axisDistance(_ scale: MinMax, _ anchorValue: Double, _ candidateValue: Double) -> Double {
+        abs(scale.normalize(anchorValue) - scale.normalize(candidateValue))
     }
 }
 

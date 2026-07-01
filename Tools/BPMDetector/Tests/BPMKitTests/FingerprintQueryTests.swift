@@ -154,4 +154,23 @@ final class FingerprintQueryTests: XCTestCase {
         let darkerDistance = neighbors.first { $0.track.path == "darker" }?.distance ?? .infinity
         XCTAssertLessThan(sameDistance, darkerDistance)
     }
+
+    func testNeighborsSeparateOnCombinedTimbre() {
+        // Zwei Kandidaten, gleich in Ära, Mix und Länge. „twin" teilt Bass, Dynamik und
+        // Helligkeit mit dem Anker; „intruder" weicht in allen dreien ab — ein Genre-
+        // Fremdkörper wie Rap/Rock in einer Dance-Compilation, den die gemittelte Energie
+        // durchgehen ließe. Weil die Klang-Achsen einzeln zählen, addiert sich seine
+        // Distanz und er landet klar hinter dem klanglichen Zwilling.
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: "Extended Mix", bass: 0.6, dynamic: 3, brightness: 1500)
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("twin", year: 1996, duration: 300, mix: "Extended Mix", bass: 0.58, dynamic: 3.2, brightness: 1500),
+            makeFingerprint("intruder", year: 1996, duration: 300, mix: "Extended Mix", bass: 0.2, dynamic: 9, brightness: 700)
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertEqual(neighbors.first?.track.path, "twin")
+        let twinDistance = neighbors.first { $0.track.path == "twin" }?.distance ?? .infinity
+        let intruderDistance = neighbors.first { $0.track.path == "intruder" }?.distance ?? .infinity
+        XCTAssertLessThan(twinDistance, intruderDistance)
+    }
 }
