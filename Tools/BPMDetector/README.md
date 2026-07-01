@@ -1,9 +1,10 @@
 # bpmdetect — native Audio-Analyse (BPM & Achsen)
 
-Phase 2 des [Musicae-Umsetzungsplans](../../docs/Musicae_Umsetzungsplan.md). Ein eigenständiges Swift-Kommandozeilen-Werkzeug, das die Audio-Achsen eines Titels **nativ** rechnet — ohne Fremdbibliotheken fürs Rechnen, nur AVFoundation (Laden) und Accelerate/vDSP (FFT/Statistik); GRDB trägt die Persistenz.
+Phase 2–3 des [Musicae-Umsetzungsplans](../../docs/Musicae_Umsetzungsplan.md). Ein eigenständiges Swift-Kommandozeilen-Werkzeug, das die Audio-Achsen eines Titels **nativ** rechnet — ohne Fremdbibliotheken fürs Rechnen, nur AVFoundation (Laden) und Accelerate/vDSP (FFT/Statistik); GRDB trägt die Persistenz.
 
-- **Teil 1 ([#4](https://github.com/christiandenzau/musicae/issues/4)):** Tempo (BPM) per spektralem Fluss + Autokorrelation — das *riskante* Stück, zuerst.
-- **Teil 2 ([#5](https://github.com/christiandenzau/musicae/issues/5)):** die leichten Achsen (Lautheit, Dynamik, Helligkeit, Bass-Anteil) plus die aus dem Titel geparste Mix-Version, je Track als **Fingerprint-Zeile** persistiert.
+- **Phase 2 · Teil 1 ([#4](https://github.com/christiandenzau/musicae/issues/4)):** Tempo (BPM) per spektralem Fluss + Autokorrelation — das *riskante* Stück, zuerst.
+- **Phase 2 · Teil 2 ([#5](https://github.com/christiandenzau/musicae/issues/5)):** die leichten Achsen (Lautheit, Dynamik, Helligkeit, Bass-Anteil) plus die aus dem Titel geparste Mix-Version, je Track als **Fingerprint-Zeile** persistiert.
+- **Phase 3 ([#6](https://github.com/christiandenzau/musicae/issues/6)):** der überzeugende Moment — **präzise Abfrage** (kombinierbare Filter) und **Nachbarvorschlag** auf der Fingerprint-Tabelle. Reine Filter, keine KI, keine Cloud.
 
 Es ist bewusst ein separates SwiftPM-Paket, kein App-Target: Die Audio-Analyse ist das *riskante* Stück, also wird sie zuerst und isoliert verifizierbar gebaut — mit `swift build`/`swift test`, unabhängig von Xcode und der App. Dieselbe reine `BPMKit`-Logik wandert später unverändert in die App.
 
@@ -40,6 +41,14 @@ swift run --package-path Tools/BPMDetector bpmdetect --selftest
 # Mix-Version berechnen und als Zeile in eine SQLite-DB schreiben (GRDB)
 swift run -c release --package-path Tools/BPMDetector \
   bpmdetect fingerprint ~/Musik/Eurodance-Testscheibe --db fingerprints.db
+
+# Abfrage (#6): kombinierbare Filter auf der Fingerprint-Tabelle
+swift run --package-path Tools/BPMDetector bpmdetect query --db fingerprints.db \
+  --year 1995-1996 --mix extended --min-energy 0.6 --duration 5-8
+
+# Nachbarvorschlag (#6): verwandte Titel zu einem Anker
+swift run --package-path Tools/BPMDetector bpmdetect neighbors "Another Night" \
+  --db fingerprints.db --limit 8
 ```
 
 Optionen: `--db <pfad>` (Ziel-DB für `fingerprint`, Default `./fingerprints.db`), `--bass [hz]` (Onset-Fokus auf Bass/untere Mitten, Default 250 Hz), `--min <bpm>` / `--max <bpm>` (Bandgrenzen, Default 120/150), `--help`.
@@ -114,6 +123,29 @@ track_fingerprints(path PK, title, duration_seconds, bpm, bpm_confidence,
 | Bass-Anteil | 0,10 … 0,55 (Ø 0,24) |
 | Mix-Version erkannt | 418 / 842 (radio edit 62, radio version 28, radio mix 23 …) |
 
+## Phase 3 — Abfrage & Nachbarvorschlag (#6)
+
+Der überzeugende Moment: auf der Fingerprint-Tabelle zwei technisch entgegengesetzte Aufgaben.
+
+**Abfrage** — „ich sage genau, was ich will, gib es ohne Müll". Kombinierbare, harte Filter:
+
+| Filter | Flag | Beispiel |
+|---|---|---|
+| Jahr (Ära) | `--year` | `1995-1996` |
+| Länge (Minuten) | `--duration` | `5-8` |
+| Mix-Art | `--mix` | `extended` / `radio` / `remix` / `original` |
+| Tempo | `--bpm` | `130-150` |
+| Energie | `--min-energy` / `--max-energy` | `0.6` |
+
+**Nachbarn** — zu einem Anker die verwandten Titel, geordnet nach einer gewichteten Distanz: **Ära** am schwersten (die Empfehlung soll in der Zeit bleiben), dann **Energie**, dann **Mix-Art** und **Länge**.
+
+Die **Energie** ist keine gespeicherte Achse, sondern relativ zum eigenen Datensatz normalisiert (laut + schnell + basslastig + wenig Dynamik = treibend). „Hohe Energie" heißt hoch *für diese Bibliothek* — ehrlich, ohne fremde Skala.
+
+**Der Beweis** über die Testscheibe aus [#3](https://github.com/christiandenzau/musicae/issues/3):
+
+- *Abfrage* „1995–96, Extended, Energie ≥ 0,6, 5–8 min" → ein präziser Treffer (Captain Hollywood, „Find Another Way (extended mix)"), kein Müll.
+- *Nachbarn* zu „Another Night" (Real McCoy, 1995) → Nothing Like the Rain & Do What's Good for Me (2 Unlimited), Everytime You Touch Me (Moby), Run Away (Real McCoy) — alle 1995, gleiche Liga. Keine akustische Zufallsähnlichkeit, sondern die richtige Nachbarschaft.
+
 ## Aufbau
 
 ```
@@ -123,9 +155,10 @@ Tools/BPMDetector/
     BPMEstimator.swift         spektraler Fluss + Autokorrelation (#4)
     AudioAxes.swift            Lautheit, Dynamik, Helligkeit, Bass (#5)
     MixVersion.swift           Mix-Version aus dem Titel parsen (#5)
-    FingerprintStore.swift     GRDB-Tabelle track_fingerprints (#5)
+    FingerprintStore.swift     GRDB-Tabelle track_fingerprints (#5/#6)
+    FingerprintQuery.swift     Abfrage + Nachbarvorschlag (#6)
     AudioLoader.swift          AVAudioFile → Mono 11025 Hz
     ClickTrackGenerator.swift  synthetische Beats für den Selbsttest
-  Sources/bpmdetect/         CLI (Datei-/Ordner-/Selbsttest-/Fingerprint-Modus)
-  Tests/BPMKitTests/         XCTest: Beats, Achsen, Mix-Parser, Store-Roundtrip
+  Sources/bpmdetect/         CLI (Datei/Ordner/Selbsttest/Fingerprint/Query/Neighbors)
+  Tests/BPMKitTests/         XCTest: Beats, Achsen, Mix, Store, Query, Nachbarn
 ```

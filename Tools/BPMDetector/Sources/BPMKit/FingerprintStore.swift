@@ -18,6 +18,10 @@ import GRDB
 public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, PersistableRecord {
     public var path: String
     public var title: String?
+    // Harte Fakten aus den Tags — tragen die Abfrage in #6 (Jahr, Anzeige).
+    public var artist: String?
+    public var album: String?
+    public var year: Int?
     public var durationSeconds: Double
     public var bpm: Double?
     public var bpmConfidence: Double?
@@ -34,6 +38,9 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
     enum CodingKeys: String, CodingKey {
         case path
         case title
+        case artist
+        case album
+        case year
         case durationSeconds = "duration_seconds"
         case bpm
         case bpmConfidence = "bpm_confidence"
@@ -48,6 +55,9 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
     public init(
         path: String,
         title: String?,
+        artist: String?,
+        album: String?,
+        year: Int?,
         durationSeconds: Double,
         bpm: Double?,
         bpmConfidence: Double?,
@@ -57,6 +67,9 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
     ) {
         self.path = path
         self.title = title
+        self.artist = artist
+        self.album = album
+        self.year = year
         self.durationSeconds = durationSeconds
         self.bpm = bpm
         self.bpmConfidence = bpmConfidence
@@ -97,6 +110,15 @@ public final class FingerprintStore {
                 t.column("analyzed_at", .datetime).notNull()
             }
         }
+        // #6 braucht harte Fakten für die Abfrage; additiv, damit ältere
+        // Fingerprint-Dateien ohne Datenverlust nachziehen.
+        migrator.registerMigration("v2_add_facts") { db in
+            try db.alter(table: TrackFingerprint.databaseTableName) { t in
+                t.add(column: "artist", .text)
+                t.add(column: "album", .text)
+                t.add(column: "year", .integer)
+            }
+        }
         return migrator
     }
 
@@ -111,6 +133,14 @@ public final class FingerprintStore {
     public func count() throws -> Int {
         try dbQueue.read { db in
             try TrackFingerprint.fetchCount(db)
+        }
+    }
+
+    /// Alle Fingerprints (für Abfrage und Nachbarsuche in-memory — bei einer
+    /// persönlichen Bibliothek problemlos, spart einen SQL-Query je Achse).
+    public func allFingerprints() throws -> [TrackFingerprint] {
+        try dbQueue.read { db in
+            try TrackFingerprint.order(Column("path")).fetchAll(db)
         }
     }
 

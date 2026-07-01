@@ -28,6 +28,9 @@ final class FingerprintStoreTests: XCTestCase {
         TrackFingerprint(
             path: path,
             title: "Beispieltitel",
+            artist: "Beispielkünstler",
+            album: "Beispielalbum",
+            year: 1995,
             durationSeconds: 212.5,
             bpm: bpm,
             bpmConfidence: bpm == nil ? nil : 0.62,
@@ -45,6 +48,9 @@ final class FingerprintStoreTests: XCTestCase {
         let read = try XCTUnwrap(store.fingerprint(forPath: "/music/track.m4a"))
         XCTAssertEqual(read.path, written.path)
         XCTAssertEqual(read.title, "Beispieltitel")
+        XCTAssertEqual(read.artist, "Beispielkünstler")
+        XCTAssertEqual(read.album, "Beispielalbum")
+        XCTAssertEqual(read.year, 1995)
         XCTAssertEqual(read.durationSeconds, 212.5, accuracy: 0.001)
         XCTAssertEqual(try XCTUnwrap(read.bpm), 140.3, accuracy: 0.001)
         XCTAssertEqual(try XCTUnwrap(read.bpmConfidence), 0.62, accuracy: 0.001)
