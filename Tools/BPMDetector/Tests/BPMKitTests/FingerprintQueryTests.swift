@@ -20,7 +20,8 @@ final class FingerprintQueryTests: XCTestCase {
         bass: Double = 0.3,
         dynamic: Double = 6,
         brightness: Double = 1200,
-        confidence: Double? = nil
+        confidence: Double? = nil,
+        genre: String? = nil
     ) -> TrackFingerprint {
         TrackFingerprint(
             path: path,
@@ -33,6 +34,7 @@ final class FingerprintQueryTests: XCTestCase {
             bpmConfidence: confidence ?? (bpm == nil ? nil : 0.8),
             axes: AudioAxes(rmsLoudnessDb: loudness, dynamicRangeDb: dynamic, spectralBrightnessHz: brightness, bassRatio: bass),
             mixVersion: mix,
+            genre: genre,
             analyzedAt: Date()
         )
     }
@@ -47,6 +49,34 @@ final class FingerprintQueryTests: XCTestCase {
         XCTAssertEqual(MixClass.classify("D.O.N.S. Remix"), .remix)
         XCTAssertEqual(MixClass.classify(nil), .original)
         XCTAssertEqual(MixClass.classify(""), .original)
+    }
+
+    // MARK: - Genre-Familie
+
+    func testGenreFamilyClassification() {
+        // Dance & seine Spielarten — der eigentliche Trenner.
+        XCTAssertEqual(GenreFamily.classify("Dance"), .dance)
+        XCTAssertEqual(GenreFamily.classify("Eurodance"), .dance)
+        XCTAssertEqual(GenreFamily.classify("Euro House"), .dance)
+        XCTAssertEqual(GenreFamily.classify("Electronic"), .dance)
+        XCTAssertEqual(GenreFamily.classify("Electrónica,Música,Dance,Trance,House,Techno"), .dance)
+        XCTAssertEqual(GenreFamily.classify("Happy Hardcore"), .dance)
+        // Pop, Rock, HipHop, Schlager, Klassik.
+        XCTAssertEqual(GenreFamily.classify("Pop"), .pop)
+        XCTAssertEqual(GenreFamily.classify("Rock"), .rock)
+        XCTAssertEqual(GenreFamily.classify("Hip Hop"), .hiphop)
+        XCTAssertEqual(GenreFamily.classify("Schlager"), .schlager)
+        XCTAssertEqual(GenreFamily.classify("Classical"), .classical)
+        // Gemischte Tags: die geordnete Priorität entscheidet. „Pop/Rock" ist
+        // Gitarrenmusik → rock (vor pop); „Dance, Rock, Electrónica" ist
+        // U96-Techno → dance (steht zuerst, der schärfste Marker).
+        XCTAssertEqual(GenreFamily.classify("Pop/Rock*"), .rock)
+        XCTAssertEqual(GenreFamily.classify("Dance,Música,Rock,Electrónica"), .dance)
+        // Leer / „Unknown" / uneindeutig → keine Familie, neutral.
+        XCTAssertNil(GenreFamily.classify(nil))
+        XCTAssertNil(GenreFamily.classify(""))
+        XCTAssertNil(GenreFamily.classify("Unknown Genre"))
+        XCTAssertNil(GenreFamily.classify("Género desconocido"))
     }
 
     // MARK: - Abfrage
@@ -206,5 +236,44 @@ final class FingerprintQueryTests: XCTestCase {
         let twinDistance = neighbors.first { $0.track.path == "danceTwin" }?.distance ?? .infinity
         let rapDistance = neighbors.first { $0.track.path == "slowRap" }?.distance ?? .infinity
         XCTAssertLessThan(twinDistance, rapDistance)
+    }
+
+    func testNeighborsPenalizeForeignGenreFamily() {
+        // Der belegte Spin-Doctors-Fall, synthetisch: Anker ist Pop; ein Pop-
+        // Zwilling und ein Dance-Fremdkörper sind in Ära, Tempo, Klang, Mix und
+        // Länge identisch — nur die Genre-Familie trennt sie. Die weiche Achse muss
+        // den Fremdkörper hinter den echten Nachbarn schieben, und zwar um genau das
+        // Achsengewicht 2 (weil sonst alles gleich ist).
+        let anchor = makeFingerprint("anchor", year: 1993, duration: 240, mix: nil, genre: "Pop")
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("popTwin", year: 1993, duration: 240, mix: nil, genre: "Pop"),
+            makeFingerprint("danceIntruder", year: 1993, duration: 240, mix: nil, genre: "Eurodance")
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertEqual(neighbors.first?.track.path, "popTwin")
+        let twin = neighbors.first { $0.track.path == "popTwin" }?.distance ?? .infinity
+        let intruder = neighbors.first { $0.track.path == "danceIntruder" }?.distance ?? .infinity
+        XCTAssertLessThan(twin, intruder)
+        XCTAssertEqual(intruder - twin, 2.0, accuracy: 1e-9)
+    }
+
+    func testNeighborsTreatUnknownGenreAsNeutral() {
+        // Ehrlichkeitsgesetz: ein Kandidat ohne verwertbares Genre („Unknown") darf
+        // keine Genre-Strafe bekommen — er zählt neutral wie ein Familien-Zwilling
+        // und bleibt klar vor dem Fremdkörper anderer Familie.
+        let anchor = makeFingerprint("anchor", year: 1993, duration: 240, mix: nil, genre: "Pop")
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("popTwin", year: 1993, duration: 240, mix: nil, genre: "Pop"),
+            makeFingerprint("unknown", year: 1993, duration: 240, mix: nil, genre: "Unknown Genre"),
+            makeFingerprint("danceIntruder", year: 1993, duration: 240, mix: nil, genre: "Dance")
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        func distance(_ path: String) -> Double {
+            neighbors.first { $0.track.path == path }?.distance ?? .infinity
+        }
+        XCTAssertEqual(distance("unknown"), distance("popTwin"), accuracy: 1e-9)
+        XCTAssertLessThan(distance("unknown"), distance("danceIntruder"))
     }
 }
