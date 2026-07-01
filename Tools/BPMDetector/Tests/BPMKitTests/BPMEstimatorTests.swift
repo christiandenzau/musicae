@@ -43,11 +43,28 @@ final class BPMEstimatorTests: XCTestCase {
         }
     }
 
+    // MARK: - Genauigkeit außerhalb des Eurodance-Bands (breites Suchband)
+
+    /// Der eigentliche Zweck des breiten Bandes: langsameres Material (Rap ~90,
+    /// Balladen) und schnelleres muss seinen *echten* Beat finden, nicht einen
+    /// metrischen Nebenpeak im engen 120–150-Fenster.
+    func testKnownTemposOutsideEurodanceBand() {
+        let estimator = BPMEstimator(onsetBand: .full)
+        for tempo in [80.0, 90, 100, 160] {
+            let signal = ClickTrackGenerator.make(bpm: tempo, durationSeconds: 25, sampleRate: sampleRate)
+            let estimate = estimator.estimate(samples: signal, sampleRate: sampleRate)
+            let bpm = try? XCTUnwrap(estimate?.bpm, "Keine Schätzung für \(tempo) BPM")
+            XCTAssertEqual(bpm ?? .nan, tempo, accuracy: tolerance,
+                           "Breites Band: \(tempo) BPM nicht getroffen")
+        }
+    }
+
     // MARK: - Kein Oktavfehler
 
-    /// Ein 130-BPM-Beat darf nicht als 65 (halb) oder 260 (doppelt) erkannt
-    /// werden. Durch das auf 120–150 eingegrenzte Band ist das per Konstruktion
-    /// ausgeschlossen — dieser Test hält die Garantie fest.
+    /// Ein 130-BPM-Beat darf nicht als 65 (halb) oder 260 (doppelt) erkannt werden.
+    /// Seit das Suchband breit ist (70–180), liegt 65 im Band — der Schutz kommt jetzt
+    /// von der perzeptuellen Tempo-Gewichtung, nicht mehr von der engen Bandgrenze.
+    /// Dieser Test hält die Garantie fest.
     func testNoOctaveError() {
         let estimator = BPMEstimator(onsetBand: .full)
         let signal = ClickTrackGenerator.make(bpm: 130, durationSeconds: 25, sampleRate: sampleRate)

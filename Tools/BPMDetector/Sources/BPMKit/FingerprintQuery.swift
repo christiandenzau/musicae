@@ -152,13 +152,13 @@ public final class FingerprintDataset {
     }
 
     /// Gewichtete Distanz: die Ära führt (die Empfehlung soll in der Zeit bleiben),
-    /// darunter die einzelnen akustischen Klang-Achsen — Dynamik, Bass, Klangfarbe und
-    /// Lautheit zählen **getrennt**, damit sich die Unterschiede, die Stile trennen,
-    /// akkumulieren statt sich in einer gemittelten „Energie" auszugleichen. Alles
-    /// datensatz-relativ normiert und rein akustisch (unabhängig von der Tag-Qualität —
-    /// Genre-Tags in Compilations sind oft pauschal oder leer). Der BPM bleibt bewusst
-    /// draußen: er ist auf das Eurodance-Band (120–150) begrenzt und trennt Nicht-Dance
-    /// daher nicht.
+    /// dann das **Tempo** (mit dem breiten Suchband jetzt verlässlich — der schärfste
+    /// Trenner, Dance ~140 vs. Rap ~90) und die einzelnen Klang-Achsen (Dynamik, Bass,
+    /// Klangfarbe, Lautheit, jeweils **getrennt**, damit sich stiltrennende Unterschiede
+    /// addieren statt sich in einer gemittelten „Energie" auszugleichen), dazu die
+    /// **Beat-Klarheit** (Confidence: klarer Four-on-the-Floor vs. komplexer Rhythmus),
+    /// zuletzt Mix-Art und Länge. Alles datensatz-relativ normiert und rein akustisch
+    /// (tag-unabhängig — Genre-Tags in Compilations sind oft pauschal oder leer).
     private func distance(anchor: TrackFingerprint, to candidate: TrackFingerprint) -> Double {
         var sum = 0.0
 
@@ -169,14 +169,26 @@ public final class FingerprintDataset {
             sum += 3.0 * 0.5   // unbekanntes Jahr: mittlere, nicht maximale Strafe
         }
 
-        // Klang-Charakter: die drei Achsen, die Stil/Genre am stärksten tragen —
-        // Dynamik (Sprach-/Transienten-Struktur vs. durchlaufender Four-on-the-Floor),
-        // Bass-Anteil und Klangfarbe. Einzeln gewichtet, damit sie sich addieren.
+        // Tempo: der schärfste Trenner, sobald der Schätzer den echten Beat findet.
+        // Nur wenn beide einen Wert haben — ohne erkannten Beat keine Aussage.
+        if let anchorBpm = anchor.bpm, let candidateBpm = candidate.bpm {
+            sum += 2.0 * axisDistance(bpm, anchorBpm, candidateBpm)
+        }
+
+        // Klang-Charakter: die Achsen, die Stil/Genre am stärksten tragen — Dynamik
+        // (Sprach-/Transienten-Struktur vs. durchlaufender Four-on-the-Floor), Bass-Anteil
+        // und Klangfarbe. Einzeln gewichtet, damit sie sich addieren.
         sum += 1.5 * axisDistance(dynamic, anchor.dynamicRangeDb, candidate.dynamicRangeDb)
         sum += 1.5 * axisDistance(bass, anchor.bassRatio, candidate.bassRatio)
         sum += 1.5 * axisDistance(brightness, anchor.spectralBrightnessHz, candidate.spectralBrightnessHz)
         // Lautheit: schwächeres, Mastering-abhängiges Signal — zählt mit, aber leichter.
         sum += 1.0 * axisDistance(loudness, anchor.rmsLoudnessDb, candidate.rmsLoudnessDb)
+
+        // Beat-Klarheit: ein sauberer Dance-Beat (hohe Confidence) unterscheidet sich vom
+        // rhythmisch komplexen Rap/Rock (niedrige Confidence). Confidence ist bereits 0…1.
+        if let anchorConfidence = anchor.bpmConfidence, let candidateConfidence = candidate.bpmConfidence {
+            sum += 1.0 * abs(anchorConfidence - candidateConfidence)
+        }
 
         // Mix-Art: gleiche Klasse ist gut, sonst voller Teilbeitrag.
         sum += 1.0 * (candidate.mixClass == anchor.mixClass ? 0 : 1)

@@ -18,8 +18,37 @@ import GRDB
 extension DatabaseManager {
     static let fingerprintMigrationIdentifier = "v12_background_compute_fingerprints"
 
+    /// Bump this whenever the analysis changes in a way that should re-run over the whole
+    /// library (e.g. the wider BPM search band). A plain UserDefaults marker — deliberately
+    /// not a schema migration, so it can't collide with parallel migrations on sibling
+    /// branches and is safe across iterative local builds.
+    static let fingerprintAnalyzerVersion = 2
+    private static let analyzerVersionKey = "fingerprintAnalyzerVersion"
+
     private struct FingerprintProgress: Codable {
         let offset: Int
+    }
+
+    /// Re-arms the fingerprint background run when the analyzer version advanced since the
+    /// last completed pass. Idempotent via the stored version; a no-op once up to date.
+    /// Call before `runPendingBackgroundMigrations()`.
+    func resetFingerprintAnalysisIfAnalyzerChanged() {
+        let stored = UserDefaults.standard.integer(forKey: Self.analyzerVersionKey)
+        guard stored != Self.fingerprintAnalyzerVersion else { return }
+        do {
+            try dbQueue.write { db in
+                if try db.tableExists("background_migrations") {
+                    try db.execute(
+                        sql: "UPDATE background_migrations SET completed_at = NULL, progress = NULL WHERE identifier = ?",
+                        arguments: [Self.fingerprintMigrationIdentifier]
+                    )
+                }
+            }
+            UserDefaults.standard.set(Self.fingerprintAnalyzerVersion, forKey: Self.analyzerVersionKey)
+            Logger.info("Analyzer v\(Self.fingerprintAnalyzerVersion): re-armed fingerprint analysis for the library")
+        } catch {
+            Logger.error("Failed to re-arm fingerprint analysis: \(error)")
+        }
     }
 
     /// Computes and persists a `ComputedFingerprint` for every (non-duplicate)

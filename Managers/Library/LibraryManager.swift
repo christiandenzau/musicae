@@ -118,6 +118,8 @@ class LibraryManager: ObservableObject {
 
         Task {
             try? await Task.sleep(nanoseconds: TimeConstants.fiftyMilliseconds)
+            // Re-analyze the library if the fingerprint analyzer advanced (e.g. wider BPM band).
+            databaseManager.resetFingerprintAnalysisIfAnalyzerChanged()
             await databaseManager.runPendingBackgroundMigrations()
             await MainActor.run { refreshEntities() }
             ArtistBioManager.shared.fetchMissingArtistImages(using: self)

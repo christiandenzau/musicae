@@ -50,9 +50,15 @@ public struct BPMEstimator: Sendable {
     /// Frequenzband, über das der Fluss summiert wird.
     public var onsetBand: OnsetBand
 
+    /// - Note: Das Suchband ist bewusst breit (70–180), damit auch langsameres
+    ///   Material (Rap, Balladen) seinen *echten* Beat findet statt eines
+    ///   metrischen Nebenpeaks im engen Eurodance-Fenster. Gegen den dadurch
+    ///   möglichen Oktavfehler wirkt die perzeptuelle Tempo-Gewichtung in der
+    ///   Autokorrelation (siehe `tempoPreference`), die die gefühlte Tempo-Ebene
+    ///   bevorzugt — nicht mehr die enge Bandgrenze.
     public init(
-        minBPM: Double = 120,
-        maxBPM: Double = 150,
+        minBPM: Double = 70,
+        maxBPM: Double = 180,
         fftSize: Int = 1024,
         hopSize: Int = 128,
         onsetBand: OnsetBand = .full
@@ -160,9 +166,11 @@ public struct BPMEstimator: Sendable {
         vDSP_dotpr(envelope, 1, envelope, 1, &energy, vDSP_Length(n))
         guard energy > 0 else { return nil }
 
-        // Unbiased-Autokorrelation je Lag im Band.
+        // Unbiased-Autokorrelation je Lag im Band. Die Peak-Auswahl gewichtet jeden
+        // Lag mit der perzeptuellen Tempo-Präferenz, damit im breiten Band nicht die
+        // halbe/doppelte Oktave (oder ein metrischer Nebenpeak) gewinnt.
         var bestLag = minLag
-        var bestValue = -Float.greatestFiniteMagnitude
+        var bestScore = -Double.greatestFiniteMagnitude
         var corr = [Float](repeating: 0, count: maxLag + 2)
 
         for lag in (minLag - 1)...(maxLag + 1) where lag >= 1 {
@@ -175,9 +183,13 @@ public struct BPMEstimator: Sendable {
             // systematisch benachteiligt werden.
             let normalized = sum / Float(count)
             corr[lag] = normalized
-            if lag >= minLag && lag <= maxLag && normalized > bestValue {
-                bestValue = normalized
-                bestLag = lag
+            if lag >= minLag && lag <= maxLag {
+                let candidateBPM = 60.0 * frameRate / Double(lag)
+                let score = Double(normalized) * tempoPreference(candidateBPM)
+                if score > bestScore {
+                    bestScore = score
+                    bestLag = lag
+                }
             }
         }
 
@@ -192,11 +204,25 @@ public struct BPMEstimator: Sendable {
         guard refinedLag > 0 else { return nil }
         let bpm = 60.0 * frameRate / refinedLag
 
-        // Confidence: Peak relativ zur Nulllag-Energie (beide auf gleiche
-        // Länge normiert) → grob die Selbstähnlichkeit einer Periode.
-        let confidence = max(0, min(1, Double(bestValue) / (Double(energy) / Double(n))))
+        // Confidence aus der ROHEN Autokorrelation am gewählten Lag (nicht der
+        // gewichteten): sie misst die tatsächliche Selbstähnlichkeit einer Periode,
+        // unabhängig von der Tempo-Präferenz. Ein unklarer Rhythmus (Rap, Rock) liegt
+        // dadurch niedrig, ein sauberer Four-on-the-Floor hoch — das trägt #17.
+        let confidence = max(0, min(1, Double(corr[bestLag]) / (Double(energy) / Double(n))))
 
         return BPMEstimate(bpm: bpm, confidence: confidence)
+    }
+
+    /// Perzeptuelle Tempo-Gewichtung: eine weiche Log-Gauss um das gefühlte
+    /// Vorzugstempo. Dämpft die halbe/doppelte Oktave (und metrische Nebenpeaks),
+    /// damit das breite Suchband keine Oktavfehler einführt, ohne einen echten, klar
+    /// stärkeren Peak zu verwerfen. Auf das Eurodance-Zentrum gelegt, damit die
+    /// saubere Scheibe stabil bleibt.
+    private func tempoPreference(_ bpm: Double) -> Double {
+        let preferred = 128.0
+        let sigma = 0.9   // Standardabweichung in Oktaven (log2)
+        let octaves = log2(bpm / preferred)
+        return exp(-0.5 * (octaves / sigma) * (octaves / sigma))
     }
 
     /// Scheitel einer Parabel durch drei äquidistante Punkte. Gibt den

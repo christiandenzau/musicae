@@ -19,7 +19,8 @@ final class FingerprintQueryTests: XCTestCase {
         bpm: Double? = 130,
         bass: Double = 0.3,
         dynamic: Double = 6,
-        brightness: Double = 1200
+        brightness: Double = 1200,
+        confidence: Double? = nil
     ) -> TrackFingerprint {
         TrackFingerprint(
             path: path,
@@ -29,7 +30,7 @@ final class FingerprintQueryTests: XCTestCase {
             year: year,
             durationSeconds: duration,
             bpm: bpm,
-            bpmConfidence: bpm == nil ? nil : 0.8,
+            bpmConfidence: confidence ?? (bpm == nil ? nil : 0.8),
             axes: AudioAxes(rmsLoudnessDb: loudness, dynamicRangeDb: dynamic, spectralBrightnessHz: brightness, bassRatio: bass),
             mixVersion: mix,
             analyzedAt: Date()
@@ -172,5 +173,24 @@ final class FingerprintQueryTests: XCTestCase {
         let twinDistance = neighbors.first { $0.track.path == "twin" }?.distance ?? .infinity
         let intruderDistance = neighbors.first { $0.track.path == "intruder" }?.distance ?? .infinity
         XCTAssertLessThan(twinDistance, intruderDistance)
+    }
+
+    func testNeighborsSeparateOnTempoAndConfidence() {
+        // Zwei Kandidaten, gleich in Ära, Klang, Mix und Länge. „danceTwin" teilt Tempo
+        // und Beat-Klarheit mit dem Dance-Anker; „slowRap" ist deutlich langsamer und hat
+        // einen unklaren Beat (niedrige Confidence) — genau das Rödelheim-Muster (echt
+        // ~97 BPM, 28 % Confidence gegen „No Limit" ~140, 84 %). Tempo- und Confidence-
+        // Achse schieben ihn klar hinter den Dance-Zwilling.
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: "Extended Mix", bpm: 140, confidence: 0.85)
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("danceTwin", year: 1996, duration: 300, mix: "Extended Mix", bpm: 138, confidence: 0.82),
+            makeFingerprint("slowRap", year: 1996, duration: 300, mix: "Extended Mix", bpm: 97, confidence: 0.28)
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertEqual(neighbors.first?.track.path, "danceTwin")
+        let twinDistance = neighbors.first { $0.track.path == "danceTwin" }?.distance ?? .infinity
+        let rapDistance = neighbors.first { $0.track.path == "slowRap" }?.distance ?? .infinity
+        XCTAssertLessThan(twinDistance, rapDistance)
     }
 }
