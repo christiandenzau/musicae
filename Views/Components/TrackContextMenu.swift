@@ -24,7 +24,10 @@ enum TrackContextMenu {
         
         // Add "Go to" submenu
         items.append(createGoToMenu(for: track))
-        
+
+        // Add "Similar Tracks" (filter-distance neighbours from the computed fingerprints)
+        items.append(createSimilarTracksItem(for: track))
+
         items.append(.divider)
         
         // Add playlist items
@@ -89,7 +92,10 @@ enum TrackContextMenu {
         
         // Add "Go to" submenu
         items.append(createGoToMenu(for: track))
-        
+
+        // Add "Similar Tracks" (filter-distance neighbours from the computed fingerprints)
+        items.append(createSimilarTracksItem(for: track))
+
         items.append(.divider)
         
         // Add playlist items
@@ -102,7 +108,15 @@ enum TrackContextMenu {
     }
     
     // MARK: - Helper Methods
-    
+
+    /// Posts a request to show the anchor's similar tracks; ContentView computes the
+    /// filter-distance neighbours and presents them in a playable list.
+    private static func createSimilarTracksItem(for track: Track) -> ContextMenuItem {
+        .button(title: String(localized: "Similar Tracks"), icon: "waveform") {
+            NotificationCenter.default.post(name: .showSimilarTracks, object: nil, userInfo: ["track": track])
+        }
+    }
+
     private static func createPlaybackItems(
         for track: Track,
         playlistManager: PlaylistManager,
