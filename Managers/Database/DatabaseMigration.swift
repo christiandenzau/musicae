@@ -5,6 +5,7 @@
 // using GRDB's built-in migration system.
 //
 
+import BPMKit
 import Foundation
 import GRDB
 
@@ -225,8 +226,26 @@ enum DatabaseMigrator {
             Logger.info("v12_add_track_fingerprints_table migration completed")
         }
 
+        migrator.registerMigration("v13_add_mix_class") { db in
+            // Denormalize the mix class (BPMKit classification) onto the fingerprint row
+            // so the smart-playlist query (#16) can filter on it without rebuilding the
+            // priority-ordered `MixClass.classify` logic in SQL.
+            try db.addColumnIfNotExists(table: "track_fingerprints", column: "mix_class", type: .text)
+            // Backfill existing rows from their stored mix_version via the single source of truth.
+            let rows = try Row.fetchAll(db, sql: "SELECT track_id, mix_version FROM track_fingerprints")
+            for row in rows {
+                let trackId: Int64 = row["track_id"]
+                let mixVersion: String? = row["mix_version"]
+                try db.execute(
+                    sql: "UPDATE track_fingerprints SET mix_class = ? WHERE track_id = ?",
+                    arguments: [MixClass.classify(mixVersion).rawValue, trackId]
+                )
+            }
+            Logger.info("v13_add_mix_class migration completed (\(rows.count) rows backfilled)")
+        }
+
         // MARK: - Future Migrations
-        // Add new migrations here as: migrator.registerMigration("v13_description") { db in ... }
+        // Add new migrations here as: migrator.registerMigration("v14_description") { db in ... }
 
         return migrator
     }
