@@ -235,6 +235,8 @@ struct IntegrationsTabView: View {
             }
             .padding(.vertical, 4)
 
+            // Long localized help string; wrapping it would change the string-catalog key.
+            // swiftlint:disable:next line_length
             Text("Fetches how your tracks connect on MusicBrainz — the release each appears on, remixes, cover origins. Runs online at about one request per second, so a large library takes a while. Then use \u{201C}Relationships\u{201D} in a track\u{2019}s context menu.")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
