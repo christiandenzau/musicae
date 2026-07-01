@@ -30,6 +30,12 @@ public enum AudioLoader {
     /// bleibt, hoch genug für den Bass- und Mittenbereich, der den Beat trägt.
     public static let defaultSampleRate: Double = 11025
 
+    /// Höhere Zielrate für die Beat-Regelmäßigkeit (#23). Erst hier liegen die
+    /// perkussiven Hochfrequenzen — Becken, Hi-Hats, Snare-Transienten über 5,5 kHz —
+    /// im Analyseband (Nyquist 11 kHz); sie zeichnen die Onsets scharf, auf denen
+    /// die rhythmische Regelmäßigkeit gemessen wird.
+    public static let beatSampleRate: Double = 22050
+
     /// Lädt `url` als Mono-Float-Signal bei `sampleRate`.
     public static func loadMonoSamples(
         url: URL,

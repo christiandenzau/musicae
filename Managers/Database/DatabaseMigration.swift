@@ -244,8 +244,17 @@ enum DatabaseMigrator {
             Logger.info("v13_add_mix_class migration completed (\(rows.count) rows backfilled)")
         }
 
+        migrator.registerMigration("v14_add_beat_regularity") { db in
+            // Beat-Regelmäßigkeit (#23): wie loopregelmäßig der Rhythmus ist. Nullable
+            // und ohne SQL-Backfill — nicht aus vorhandenen Spalten ableitbar, nur aus
+            // dem Audio. Der hochgezählte `fingerprintAnalyzerVersion` (2→3) stößt die
+            // Re-Analyse an, die den Wert füllt.
+            try db.addColumnIfNotExists(table: "track_fingerprints", column: "beat_regularity", type: .double)
+            Logger.info("v14_add_beat_regularity migration completed")
+        }
+
         // MARK: - Future Migrations
-        // Add new migrations here as: migrator.registerMigration("v14_description") { db in ... }
+        // Add new migrations here as: migrator.registerMigration("v15_description") { db in ... }
 
         return migrator
     }

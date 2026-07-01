@@ -29,6 +29,11 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
     public var dynamicRangeDb: Double
     public var spectralBrightnessHz: Double
     public var bassRatio: Double
+    /// Beat-Regelmäßigkeit (0…1) — tag-unabhängige rhythmische Achse (Phase 5b,
+    /// #23): wie loopregelmäßig der Rhythmus ist (Dance/Techno hoch, organisches
+    /// Schlagzeug niedrig). Optional: ältere Fingerprints ohne diese Achse zählen
+    /// in der Distanz neutral.
+    public var beatRegularity: Double?
     public var mixVersion: String?
     /// Getaggtes Genre (roh, denormalisiert aus `tracks.genre`). **Transient:**
     /// bewusst nicht in `CodingKeys` — wird nicht in `track_fingerprints`
@@ -54,6 +59,7 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
         case dynamicRangeDb = "dynamic_range_db"
         case spectralBrightnessHz = "spectral_brightness_hz"
         case bassRatio = "bass_ratio"
+        case beatRegularity = "beat_regularity"
         case mixVersion = "mix_version"
         case analyzedAt = "analyzed_at"
     }
@@ -68,6 +74,7 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
         bpm: Double?,
         bpmConfidence: Double?,
         axes: AudioAxes,
+        beatRegularity: Double? = nil,
         mixVersion: String?,
         genre: String? = nil,
         analyzedAt: Date
@@ -84,6 +91,7 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
         self.dynamicRangeDb = axes.dynamicRangeDb
         self.spectralBrightnessHz = axes.spectralBrightnessHz
         self.bassRatio = axes.bassRatio
+        self.beatRegularity = beatRegularity
         self.mixVersion = mixVersion
         self.genre = genre
         self.analyzedAt = analyzedAt
@@ -125,6 +133,14 @@ public final class FingerprintStore {
                 t.add(column: "artist", .text)
                 t.add(column: "album", .text)
                 t.add(column: "year", .integer)
+            }
+        }
+        // #23: die Beat-Regelmäßigkeit; additiv und nullable, sodass ältere
+        // Fingerprint-Dateien ohne Datenverlust nachziehen — der Wert bleibt leer,
+        // bis neu analysiert wird.
+        migrator.registerMigration("v3_add_beat_regularity") { db in
+            try db.alter(table: TrackFingerprint.databaseTableName) { t in
+                t.add(column: "beat_regularity", .double)
             }
         }
         return migrator

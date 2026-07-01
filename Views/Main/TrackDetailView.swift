@@ -396,6 +396,10 @@ struct TrackDetailView: View {
         items.append((String(localized: "Dynamics"), String(format: "%.1f dB", fingerprint.dynamicRangeDb)))
         items.append((String(localized: "Brightness"), String(format: "%.0f Hz", fingerprint.spectralBrightnessHz)))
         items.append((String(localized: "Bass"), String(format: "%.0f%%", fingerprint.bassRatio * 100)))
+        // Beat-Regelmäßigkeit (#23) — nur zeigen, wenn schon berechnet (nach der Re-Analyse).
+        if let beat = fingerprint.beatRegularity {
+            items.append((String(localized: "Beat Regularity"), String(format: "%.0f%%", beat * 100)))
+        }
 
         if let mixVersion = fingerprint.mixVersion, !mixVersion.isEmpty {
             items.append((String(localized: "Mix Version"), mixVersion))

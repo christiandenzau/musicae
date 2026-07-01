@@ -28,6 +28,11 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
     var spectralBrightnessHz: Double
     /// Bass-Anteil: Anteil der Spektralenergie unterhalb der Bass-Grenze (0…1).
     var bassRatio: Double
+    /// Beat-Regelmäßigkeit (0…1) — tag-unabhängige rhythmische Achse (Phase 5b,
+    /// #23): wie loopregelmäßig der Rhythmus ist (Dance/Techno hoch, organisches
+    /// Schlagzeug niedrig). Optional: leer, bis der Analyzer (v3) den Titel neu
+    /// gerechnet hat; zählt bis dahin in der Nachbardistanz neutral.
+    var beatRegularity: Double?
     /// Aus dem Titel geparste Mix-/Versionsangabe (z. B. „Extended", „Radio Edit").
     var mixVersion: String?
     /// Grobe Mix-Klasse (`BPMKit.MixClass`-rawValue: extended/radioEdit/remix/
@@ -50,6 +55,7 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         static let dynamicRangeDb = Column("dynamic_range_db")
         static let spectralBrightnessHz = Column("spectral_brightness_hz")
         static let bassRatio = Column("bass_ratio")
+        static let beatRegularity = Column("beat_regularity")
         static let mixVersion = Column("mix_version")
         static let mixClass = Column("mix_class")
         static let analyzedAt = Column("analyzed_at")
@@ -63,6 +69,7 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         dynamicRangeDb: Double,
         spectralBrightnessHz: Double,
         bassRatio: Double,
+        beatRegularity: Double?,
         mixVersion: String?,
         mixClass: String?,
         analyzedAt: Date
@@ -74,6 +81,7 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         self.dynamicRangeDb = dynamicRangeDb
         self.spectralBrightnessHz = spectralBrightnessHz
         self.bassRatio = bassRatio
+        self.beatRegularity = beatRegularity
         self.mixVersion = mixVersion
         self.mixClass = mixClass
         self.analyzedAt = analyzedAt
@@ -87,6 +95,7 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         dynamicRangeDb = row[Columns.dynamicRangeDb]
         spectralBrightnessHz = row[Columns.spectralBrightnessHz]
         bassRatio = row[Columns.bassRatio]
+        beatRegularity = row[Columns.beatRegularity]
         mixVersion = row[Columns.mixVersion]
         mixClass = row[Columns.mixClass]
         analyzedAt = row[Columns.analyzedAt]
@@ -100,6 +109,7 @@ struct ComputedFingerprint: FetchableRecord, PersistableRecord, Equatable, Senda
         container[Columns.dynamicRangeDb] = dynamicRangeDb
         container[Columns.spectralBrightnessHz] = spectralBrightnessHz
         container[Columns.bassRatio] = bassRatio
+        container[Columns.beatRegularity] = beatRegularity
         container[Columns.mixVersion] = mixVersion
         container[Columns.mixClass] = mixClass
         container[Columns.analyzedAt] = analyzedAt

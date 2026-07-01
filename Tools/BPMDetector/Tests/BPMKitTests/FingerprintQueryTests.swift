@@ -21,7 +21,8 @@ final class FingerprintQueryTests: XCTestCase {
         dynamic: Double = 6,
         brightness: Double = 1200,
         confidence: Double? = nil,
-        genre: String? = nil
+        genre: String? = nil,
+        beatRegularity: Double? = nil
     ) -> TrackFingerprint {
         TrackFingerprint(
             path: path,
@@ -33,6 +34,7 @@ final class FingerprintQueryTests: XCTestCase {
             bpm: bpm,
             bpmConfidence: confidence ?? (bpm == nil ? nil : 0.8),
             axes: AudioAxes(rmsLoudnessDb: loudness, dynamicRangeDb: dynamic, spectralBrightnessHz: brightness, bassRatio: bass),
+            beatRegularity: beatRegularity,
             mixVersion: mix,
             genre: genre,
             analyzedAt: Date()
@@ -275,5 +277,42 @@ final class FingerprintQueryTests: XCTestCase {
         }
         XCTAssertEqual(distance("unknown"), distance("popTwin"), accuracy: 1e-9)
         XCTAssertLessThan(distance("unknown"), distance("danceIntruder"))
+    }
+
+    func testNeighborsSeparateByBeatRegularity() {
+        // Anker, Zwilling und Fremdkörper sind in Ära, Tempo, Mix und Länge gleich.
+        // Der Zwilling teilt die Beat-Regelmäßigkeit mit dem Anker, der Fremdkörper
+        // (loopregelmäßiger Dance) weicht klar ab — die Rock-vs-Dance-Trennung, die
+        // Helligkeit/Lautheit allein verfehlen. Die Rhythmus-Achse schiebt ihn zurück.
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: "Extended Mix", beatRegularity: 0.40)
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("twin", year: 1996, duration: 300, mix: "Extended Mix", beatRegularity: 0.43),
+            makeFingerprint("danceIntruder", year: 1996, duration: 300, mix: "Extended Mix", beatRegularity: 0.90)
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        XCTAssertEqual(neighbors.first?.track.path, "twin")
+        let twin = neighbors.first { $0.track.path == "twin" }?.distance ?? .infinity
+        let intruder = neighbors.first { $0.track.path == "danceIntruder" }?.distance ?? .infinity
+        XCTAssertLessThan(twin, intruder)
+    }
+
+    func testNeighborsTreatMissingBeatRegularityAsNeutral() {
+        // Ehrlichkeitsgesetz: ein Kandidat ohne Beat-Regelmäßigkeit (noch nicht neu
+        // analysiert) darf keine Rhythmus-Strafe bekommen — er zählt neutral wie der
+        // Rhythmus-Zwilling und bleibt klar vor dem Fremdkörper.
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: "Extended Mix", beatRegularity: 0.40)
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("twin", year: 1996, duration: 300, mix: "Extended Mix", beatRegularity: 0.40),
+            makeFingerprint("noBeat", year: 1996, duration: 300, mix: "Extended Mix"),
+            makeFingerprint("danceIntruder", year: 1996, duration: 300, mix: "Extended Mix", beatRegularity: 0.90)
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        func distance(_ path: String) -> Double {
+            neighbors.first { $0.track.path == path }?.distance ?? .infinity
+        }
+        XCTAssertEqual(distance("noBeat"), distance("twin"), accuracy: 1e-9)
+        XCTAssertLessThan(distance("noBeat"), distance("danceIntruder"))
     }
 }

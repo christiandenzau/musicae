@@ -95,6 +95,29 @@ public struct AudioAxesAnalyzer: Sendable {
         )
     }
 
+    /// Beat-Regelmäßigkeit 0…1: die Stärke der stärksten Autokorrelation der
+    /// Onset-Hüllkurve im Loop-Fenster (über einen einzelnen Beat hinaus). Hoch =
+    /// maschinell-loopregelmäßig (Dance/Techno, programmierter Four-on-the-Floor),
+    /// niedrig = variabel-organisch (echtes Schlagzeug, Rock). **Anders als die
+    /// BPM-Confidence** (wie *klar* ein Beat erkennbar ist) misst dies, wie
+    /// *regelmäßig* sich der Rhythmus über mehrere Beats wiederholt — laut
+    /// DB-Analyse der stärkste tag-unabhängige Trenner zwischen Gitarrenrock und
+    /// Eurodance (#23). Braucht die höhere Analyserate (`AudioLoader.beatSampleRate`),
+    /// damit die perkussiven Hochfrequenzen die Onsets scharf zeichnen.
+    ///
+    /// - Returns: die Regelmäßigkeit oder `nil`, wenn das Signal zu kurz für ein
+    ///   Loop-Fenster ist.
+    public func beatRegularity(samples: [Float], sampleRate: Double) -> Double? {
+        guard sampleRate > 0, samples.count >= fftSize else { return nil }
+        let flux = spectralFlux(samples: samples)
+        // Loop-Lag-Fenster: ~0,9 s (über einen einzelnen Beat hinaus) bis ~9 s.
+        let framesPerSecond = sampleRate / Double(hopSize)
+        let minLag = max(1, Int(0.9 * framesPerSecond))
+        let maxLag = Int(9.0 * framesPerSecond)
+        guard flux.count > minLag + 1, maxLag > minLag else { return nil }
+        return peakAutocorrelation(flux, minLag: minLag, maxLag: min(maxLag, flux.count - 1))
+    }
+
     // MARK: - Lautheit & Dynamik
 
     private func loudnessAndDynamics(samples: [Float], sampleRate: Double) -> (rmsDb: Double, dynamicsDb: Double) {
@@ -161,6 +184,62 @@ public struct AudioAxesAnalyzer: Sendable {
 
         guard sumMagnitude > 0 else { return (0, 0) }
         return (sumWeightedFreq / sumMagnitude, sumBassMagnitude / sumMagnitude)
+    }
+
+    // MARK: - Rhythmus (Beat-Regelmäßigkeit)
+
+    /// Onset-Hüllkurve: der positive spektrale Fluss je Frame — die Summe der
+    /// Magnituden-*Zunahmen* gegenüber dem Vorframe (Anschläge/Transienten heben
+    /// ihn, Ausklänge zählen nicht). Auf der bestehenden FFT, ein Wert je Frame.
+    private func spectralFlux(samples: [Float]) -> [Double] {
+        let fft = RealFFT(size: fftSize)
+        let hann = hannWindow(fftSize)
+        let halfSize = fftSize / 2
+        let frameCount = 1 + (samples.count - fftSize) / hopSize
+        guard frameCount > 1 else { return [] }
+
+        var windowed = [Float](repeating: 0, count: fftSize)
+        var previous = [Float](repeating: 0, count: halfSize)
+        var flux = [Double]()
+        flux.reserveCapacity(frameCount)
+        for frame in 0..<frameCount {
+            let start = frame * hopSize
+            samples.withUnsafeBufferPointer { src in
+                windowed.withUnsafeMutableBufferPointer { dst in
+                    vDSP_vmul(src.baseAddress! + start, 1, hann, 1, dst.baseAddress!, 1, vDSP_Length(fftSize))
+                }
+            }
+            let magnitudes = fft.magnitudes(of: windowed)
+            var sum = 0.0
+            for bin in 1..<halfSize {
+                let rise = magnitudes[bin] - previous[bin]
+                if rise > 0 { sum += Double(rise) * Double(rise) }
+            }
+            flux.append(sum.squareRoot())
+            previous = magnitudes
+        }
+        return flux
+    }
+
+    /// Stärkster Autokorrelations-Peak einer Reihe im Lag-Fenster `[minLag, maxLag]`,
+    /// auf Lag 0 (die Gesamtenergie) normiert → 0…1. Für die Onset-Hüllkurve misst
+    /// das, wie stark sich der Rhythmus loopartig wiederholt.
+    private func peakAutocorrelation(_ signal: [Double], minLag: Int, maxLag: Int) -> Double {
+        let n = signal.count
+        guard n > 1, minLag <= maxLag else { return 0 }
+        let mean = signal.reduce(0, +) / Double(n)
+        let centered = signal.map { $0 - mean }
+        let energy = centered.reduce(0) { $0 + $1 * $1 }
+        guard energy > 0 else { return 0 }
+        var peak = 0.0
+        for lag in minLag...maxLag {
+            var sum = 0.0
+            for index in 0..<(n - lag) {
+                sum += centered[index] * centered[index + lag]
+            }
+            peak = Swift.max(peak, sum / energy)
+        }
+        return Swift.max(0, Swift.min(1, peak))
     }
 
     // MARK: - Helfer

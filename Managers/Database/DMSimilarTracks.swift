@@ -42,6 +42,7 @@ extension DatabaseManager {
                            f.calculated_bpm AS bpm, f.bpm_confidence AS conf,
                            f.rms_loudness_db AS loud, f.dynamic_range_db AS dyn,
                            f.spectral_brightness_hz AS bright, f.bass_ratio AS bass,
+                           f.beat_regularity AS beat,
                            f.mix_version AS mix, f.analyzed_at AS analyzed
                     FROM track_fingerprints f
                     JOIN tracks t ON t.id = f.track_id
@@ -63,6 +64,8 @@ extension DatabaseManager {
                         spectralBrightnessHz: row["bright"],
                         bassRatio: row["bass"]
                     )
+                    // Beat-Regelmäßigkeit (#23) durchreichen; nil (noch nicht neu
+                    // analysiert) zählt in der Distanz neutral.
                     fingerprints.append(TrackFingerprint(
                         path: path,
                         title: row["title"],
@@ -73,6 +76,7 @@ extension DatabaseManager {
                         bpm: row["bpm"],
                         bpmConfidence: row["conf"],
                         axes: axes,
+                        beatRegularity: row["beat"],
                         mixVersion: row["mix"],
                         genre: row["genre"],
                         analyzedAt: row["analyzed"]

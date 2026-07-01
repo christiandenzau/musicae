@@ -94,6 +94,7 @@ public final class FingerprintDataset {
     private let bass: MinMax
     private let dynamic: MinMax
     private let brightness: MinMax
+    private let beatRegularity: MinMax
 
     public init(tracks: [TrackFingerprint]) {
         self.tracks = tracks
@@ -102,6 +103,7 @@ public final class FingerprintDataset {
         bass = MinMax(tracks.map(\.bassRatio))
         dynamic = MinMax(tracks.map(\.dynamicRangeDb))
         brightness = MinMax(tracks.map(\.spectralBrightnessHz))
+        beatRegularity = MinMax(tracks.compactMap(\.beatRegularity))
     }
 
     // MARK: Energie
@@ -166,6 +168,8 @@ public final class FingerprintDataset {
     /// Trenner, Dance ~140 vs. Rap ~90) und die einzelnen Klang-Achsen (Dynamik, Bass,
     /// Klangfarbe, Lautheit, jeweils **getrennt**, damit sich stiltrennende Unterschiede
     /// addieren statt sich in einer gemittelten „Energie" auszugleichen), dazu die
+    /// **Beat-Regelmäßigkeit** (#23 — der tag-unabhängige rhythmische Trenner, der
+    /// loopregelmäßiges Dance/Techno vom variabel-organischen Rock scheidet) und die
     /// **Beat-Klarheit** (Confidence: klarer Four-on-the-Floor vs. komplexer Rhythmus),
     /// dann Mix-Art und Länge, zuletzt die **Genre-Familie** als bewusst *weiches*
     /// Tag-Signal (Phase 5b). Die akustischen Achsen sind datensatz-relativ normiert
@@ -196,6 +200,16 @@ public final class FingerprintDataset {
         sum += 1.5 * axisDistance(brightness, anchor.spectralBrightnessHz, candidate.spectralBrightnessHz)
         // Lautheit: schwächeres, Mastering-abhängiges Signal — zählt mit, aber leichter.
         sum += 1.0 * axisDistance(loudness, anchor.rmsLoudnessDb, candidate.rmsLoudnessDb)
+
+        // Beat-Regelmäßigkeit (Phase 5b, #23), tag-unabhängig: der stärkste
+        // rhythmische Trenner zwischen loopregelmäßigem Dance/Techno und dem
+        // variabel-organischen Schlagzeug von Rock/Pop — dort, wo Klangfarbe und
+        // Tempo sich noch gleichen. An der Testscheibe der beste akustische Filter
+        // (echte Techno-Fremdkörper 11→3). Stark gewichtet, aber nur wenn beide
+        // Titel den Wert haben; sonst (noch nicht neu analysiert) neutral.
+        if let anchorBeat = anchor.beatRegularity, let candidateBeat = candidate.beatRegularity {
+            sum += 3.0 * axisDistance(beatRegularity, anchorBeat, candidateBeat)
+        }
 
         // Beat-Klarheit: ein sauberer Dance-Beat (hohe Confidence) unterscheidet sich vom
         // rhythmisch komplexen Rap/Rock (niedrige Confidence). Confidence ist bereits 0…1.
