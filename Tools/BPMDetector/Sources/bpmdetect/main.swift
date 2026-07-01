@@ -36,6 +36,17 @@ struct Options {
     // Abfrage/Nachbarn (#6)
     var filter = FingerprintFilter()
     var limit = 10
+    // Beziehungsgraph (#7)
+    var relations = false
+    var graph = false
+    var libraryPath: String?          // Musicae-DB als MBID-Quelle
+    var mbidsFile: String?            // Textdatei mit je einer MBID pro Zeile
+    var mbids: [String] = []          // MBIDs direkt auf der Kommandozeile
+    var contact = "https://github.com/christiandenzau/musicae"
+    var enrichReleases = true         // Releases mit Label/Release-Gruppe anreichern
+    var rateInterval = 1.0            // Ratenabstand in Sekunden (MusicBrainz: ~1)
+    var take: Int?                    // nur die ersten N Recordings holen
+    var depth = 2                     // Wandertiefe für `graph`
 }
 
 /// „1995-1996" oder „1995" → Range. nil bei Unsinn.
@@ -81,6 +92,51 @@ func parseArguments(_ args: [String]) -> Options {
             options.query = true
         case "neighbors", "neighbours":
             options.neighbors = true
+        case "relations":
+            options.relations = true
+        case "graph":
+            options.graph = true
+        case "--library":
+            if index + 1 < args.count {
+                options.libraryPath = args[index + 1]
+                index += 1
+            }
+        case "--mbids-file":
+            if index + 1 < args.count {
+                options.mbidsFile = args[index + 1]
+                index += 1
+            }
+        case "--mbids":
+            // Komma- oder Leerzeichen-getrennte MBIDs.
+            if index + 1 < args.count {
+                options.mbids = args[index + 1]
+                    .split { $0 == "," || $0 == " " }
+                    .map { String($0).trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
+                index += 1
+            }
+        case "--contact":
+            if index + 1 < args.count {
+                options.contact = args[index + 1]
+                index += 1
+            }
+        case "--no-labels":
+            options.enrichReleases = false
+        case "--interval":
+            if index + 1 < args.count, let value = Double(args[index + 1]) {
+                options.rateInterval = value
+                index += 1
+            }
+        case "--take":
+            if index + 1 < args.count, let value = Int(args[index + 1]) {
+                options.take = value
+                index += 1
+            }
+        case "--depth":
+            if index + 1 < args.count, let value = Int(args[index + 1]) {
+                options.depth = value
+                index += 1
+            }
         case "--db":
             if index + 1 < args.count {
                 options.dbPath = args[index + 1]
@@ -160,9 +216,27 @@ func printUsage() {
                                       als Fingerprint-Zeile persistieren (#5)
       bpmdetect query [filter]        Titel filtern (Jahr/Länge/Mix/Energie) (#6)
       bpmdetect neighbors <titel>     verwandte Titel zum Anker vorschlagen (#6)
+      bpmdetect relations [quelle]    MusicBrainz-Beziehungen holen & als Kanten
+                                      speichern (#7); Quelle via --library/--mbids
+      bpmdetect graph <anker>         den gespeicherten Beziehungsgraphen ab einem
+                                      Titel oder einer MBID begehen (#7)
 
     Optionen (allgemein):
-      --db <pfad>   SQLite-Datei für fingerprint/query/neighbors (Default ./fingerprints.db)
+      --db <pfad>   SQLite-Datei; Default ./fingerprints.db (fingerprint/query/
+                    neighbors) bzw. ./relations.db (relations/graph)
+
+    Optionen (relations, #7):
+      --library <musicae.db>  Recording-MBIDs aus einer Musicae-DB lesen
+                              (schreibgeschützt; bei laufender App eine Kopie)
+      --mbids-file <pfad>     Textdatei mit je einer Recording-MBID pro Zeile
+      --mbids <id,id,…>       Recording-MBIDs direkt angeben
+      --no-labels             Releases nicht mit Label/Release-Gruppe anreichern
+      --interval <sek>        Ratenabstand (Default 1.0; MusicBrainz duldet ~1/s)
+      --take <n>              nur die ersten n Recordings holen (kurzer Testlauf)
+      --contact <str>         Kontakt für den User-Agent (URL oder E-Mail)
+
+    Optionen (graph, #7):
+      --depth <n>   Wandertiefe ab dem Anker (Default 2)
 
     Optionen (query/neighbors):
       --year <a-b>       Jahresbereich, z.B. 1995-1996
@@ -605,6 +679,156 @@ func runNeighbors(options: Options) {
     }
 }
 
+// MARK: - Beziehungsgraph (#7)
+
+/// Sammelt die Recording-MBIDs aus der gewählten Quelle. Die Musicae-Bibliothek
+/// ist die verlässliche (Musicae hat die Tags schon geknackt); Datei und
+/// CLI-Liste sind der direkte Weg. Reihenfolge bleibt, Duplikate fallen raus.
+func collectRecordingMBIDs(_ options: Options) -> [String] {
+    var mbids: [String] = []
+
+    if let libraryPath = options.libraryPath {
+        do {
+            let refs = try LibraryMBIDReader.recordingRefs(fromLibraryAt: libraryPath)
+            mbids += refs.map(\.recordingMBID)
+            FileHandle.standardError.write(Data("Aus \(libraryPath): \(refs.count) Titel mit Recording-MBID\n".utf8))
+        } catch {
+            FileHandle.standardError.write(Data("Fehler: Bibliothek \(libraryPath) nicht lesbar: \(error)\n".utf8))
+            exit(1)
+        }
+    }
+    if let file = options.mbidsFile {
+        guard let content = try? String(contentsOfFile: file, encoding: .utf8) else {
+            FileHandle.standardError.write(Data("Fehler: MBID-Datei \(file) nicht lesbar\n".utf8))
+            exit(1)
+        }
+        mbids += content.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+    mbids += options.mbids
+
+    var seen = Set<String>()
+    return mbids.filter { seen.insert($0).inserted }
+}
+
+func runRelations(options: Options) async {
+    var mbids = collectRecordingMBIDs(options)
+    guard !mbids.isEmpty else {
+        FileHandle.standardError.write(Data(
+            "Fehler: keine MBIDs — Quelle via --library <musicae.db>, --mbids-file <pfad> oder --mbids <id,…>\n".utf8))
+        exit(1)
+    }
+    if let take = options.take, take < mbids.count {
+        mbids = Array(mbids.prefix(take))
+    }
+
+    let dbPath = options.dbPath ?? "relations.db"
+    let store: RelationStore
+    do {
+        store = try RelationStore(path: dbPath)
+    } catch {
+        FileHandle.standardError.write(Data("Fehler: Graph-DB \(dbPath) nicht nutzbar: \(error)\n".utf8))
+        exit(1)
+    }
+
+    let client = MusicBrainzClient(
+        contact: options.contact,
+        limiter: RateLimiter(minimumInterval: .milliseconds(max(1, Int(options.rateInterval * 1000))))
+    )
+    let ingestor = RelationIngestor(client: client, store: store)
+
+    let scope = options.enrichReleases ? "\(mbids.count) Aufnahmen + ihre Releases" : "\(mbids.count) Aufnahmen"
+    print("Beziehungslauf über \(scope) → \(dbPath) (Ratenabstand \(options.rateInterval)s)")
+
+    let report = await ingestor.ingest(recordingMBIDs: mbids, enrichReleases: options.enrichReleases) { progress in
+        let phase = progress.phase == "release" ? "Releases " : "Aufnahmen"
+        FileHandle.standardError.write(Data("\r  \(phase) \(progress.done)/\(progress.total)   ".utf8))
+    }
+    FileHandle.standardError.write(Data("\n".utf8))
+
+    print(String(repeating: "-", count: 50))
+    print("Aufnahmen: \(report.recordingsFetched) geholt, \(report.recordingsFailed) Fehler.")
+    if options.enrichReleases {
+        print("Releases:  \(report.releasesEnriched) angereichert, \(report.releasesFailed) Fehler.")
+    }
+    let entities = (try? store.entityCount()) ?? 0
+    let edges = (try? store.edgeCount()) ?? 0
+    print("Graph: \(entities) Knoten, \(edges) Kanten in \(dbPath).")
+    if !report.failures.isEmpty {
+        print("\nFehlschläge (erste 10):")
+        for failure in report.failures.prefix(10) {
+            print("  [\(failure.kind)] \(failure.mbid): \(failure.message)")
+        }
+    }
+    print("\nFaden begehen:  bpmdetect graph <titel|mbid> --db \(dbPath)")
+}
+
+/// Eine Zeile für einen Graph-Knoten: Titel — Künstler (Jahr) [Art · Label/Typ].
+func describeNode(_ node: GraphNode?) -> String {
+    guard let node else { return "(unbekannt)" }
+    var text = node.title ?? node.mbid
+    if let artist = node.artist { text += " — \(artist)" }
+    if let year = node.year { text += " (\(year))" }
+    var tags = [node.kind.rawValue]
+    if let label = node.label { tags.append(label) }
+    else if let primary = node.primaryType { tags.append(primary) }
+    text += " [\(tags.joined(separator: " · "))]"
+    return text
+}
+
+func runGraph(options: Options) {
+    let dbPath = options.dbPath ?? "relations.db"
+    guard let store = try? RelationStore(path: dbPath) else {
+        FileHandle.standardError.write(Data("Fehler: Graph-DB \(dbPath) nicht lesbar\n".utf8))
+        exit(1)
+    }
+    guard let graph = try? store.loadGraph(), !graph.nodesByID.isEmpty else {
+        FileHandle.standardError.write(Data(
+            "Fehler: \(dbPath) enthält keinen Graphen — erst `relations` laufen lassen\n".utf8))
+        exit(1)
+    }
+    guard let anchorText = options.paths.first else {
+        FileHandle.standardError.write(Data("Fehler: `graph` braucht einen Anker (Titel oder MBID)\n".utf8))
+        exit(1)
+    }
+
+    // Anker: direkte MBID, sonst der beste Titeltreffer. Recording, Release und
+    // Werk heißen oft gleich — darum bevorzugt ein *begehbarer* Knoten (mit
+    // ausgehenden Kanten) und eine Aufnahme, denn von dort läuft der Faden.
+    let anchor: GraphNode
+    if UUID(uuidString: anchorText) != nil, let node = graph.node(anchorText) {
+        anchor = node
+    } else {
+        let matches = graph.nodes
+            .filter { ($0.title ?? "").localizedCaseInsensitiveContains(anchorText) }
+            .sorted { lhs, rhs in
+                let lWalkable = !graph.neighbors(of: lhs.mbid).isEmpty
+                let rWalkable = !graph.neighbors(of: rhs.mbid).isEmpty
+                if lWalkable != rWalkable { return lWalkable }
+                if (lhs.kind == .recording) != (rhs.kind == .recording) { return lhs.kind == .recording }
+                return (lhs.year ?? 0, lhs.title ?? "") < (rhs.year ?? 0, rhs.title ?? "")
+            }
+        guard let best = matches.first else {
+            FileHandle.standardError.write(Data("Fehler: kein Knoten passend zu '\(anchorText)'\n".utf8))
+            exit(1)
+        }
+        anchor = best
+    }
+
+    print("Anker: \(describeNode(anchor))\n")
+    let steps = graph.walk(from: anchor.mbid, maxDepth: options.depth)
+    guard !steps.isEmpty else {
+        print("(keine ausgehenden Beziehungen gespeichert)")
+        return
+    }
+    for step in steps {
+        let indent = String(repeating: "  ", count: step.depth)
+        print("\(indent)→ \(pad(step.edge.relation, to: 12)) \(describeNode(step.target))")
+    }
+    print("\n\(steps.count) Kanten begangen (Tiefe \(options.depth)).")
+}
+
 // MARK: - Einstieg
 
 let options = parseArguments(Array(CommandLine.arguments.dropFirst()))
@@ -626,6 +850,16 @@ if options.query {
 
 if options.neighbors {
     runNeighbors(options: options)
+    exit(0)
+}
+
+if options.relations {
+    await runRelations(options: options)
+    exit(0)
+}
+
+if options.graph {
+    runGraph(options: options)
     exit(0)
 }
 
