@@ -164,8 +164,9 @@ public final class FingerprintDataset {
     }
 
     /// Gewichtete Distanz: die Ära führt (die Empfehlung soll in der Zeit bleiben),
-    /// dann das **Tempo** (mit dem breiten Suchband jetzt verlässlich — der schärfste
-    /// Trenner, Dance ~140 vs. Rap ~90) und die einzelnen Klang-Achsen (Dynamik, Bass,
+    /// dann das **Tempo** (der schärfste Trenner, Dance ~140 vs. Rap ~90 — jetzt mit der
+    /// BPM-Confidence gewichtet, #30, damit ein unsicher gemessener Beat nicht falsch
+    /// zieht) und die einzelnen Klang-Achsen (Dynamik, Bass,
     /// Klangfarbe, Lautheit, jeweils **getrennt**, damit sich stiltrennende Unterschiede
     /// addieren statt sich in einer gemittelten „Energie" auszugleichen), dazu die
     /// **Beat-Regelmäßigkeit** (#23 — der tag-unabhängige rhythmische Trenner, der
@@ -186,10 +187,15 @@ public final class FingerprintDataset {
             sum += 3.0 * 0.5   // unbekanntes Jahr: mittlere, nicht maximale Strafe
         }
 
-        // Tempo: der schärfste Trenner, sobald der Schätzer den echten Beat findet.
-        // Nur wenn beide einen Wert haben — ohne erkannten Beat keine Aussage.
+        // Tempo: der schärfste Trenner, sobald der Schätzer den echten Beat findet —
+        // aber nur so weit, wie er dem Wert traut. Der Beitrag skaliert mit der
+        // kleineren der beiden BPM-Confidences: ein unsicher gemessenes Tempo (etwa
+        // der Doppeltempo-Fehler bei sample-basiertem HipHop) erzeugt so weder falsche
+        // Nähe noch falsche Ferne, sondern zählt anteilig neutral (#30, Ehrlichkeits-
+        // gesetz). Nur wenn beide einen Wert haben — ohne erkannten Beat keine Aussage.
         if let anchorBpm = anchor.bpm, let candidateBpm = candidate.bpm {
-            sum += 2.0 * axisDistance(bpm, anchorBpm, candidateBpm)
+            let tempoTrust = min(anchor.bpmConfidence ?? 1, candidate.bpmConfidence ?? 1)
+            sum += 2.0 * tempoTrust * axisDistance(bpm, anchorBpm, candidateBpm)
         }
 
         // Klang-Charakter: die Achsen, die Stil/Genre am stärksten tragen — Dynamik
