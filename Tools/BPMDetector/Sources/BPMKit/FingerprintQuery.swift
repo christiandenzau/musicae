@@ -95,6 +95,9 @@ public final class FingerprintDataset {
     private let dynamic: MinMax
     private let brightness: MinMax
     private let beatRegularity: MinMax
+    /// Genre-Familie je Künstler aus dem Mehrheitsvotum (#32) — füllt leere
+    /// Track-Tags. Aus dem Datensatz abgeleitet, siehe `majorityArtistFamilies`.
+    private let artistFamily: [String: GenreFamily]
 
     public init(tracks: [TrackFingerprint]) {
         self.tracks = tracks
@@ -104,6 +107,7 @@ public final class FingerprintDataset {
         dynamic = MinMax(tracks.map(\.dynamicRangeDb))
         brightness = MinMax(tracks.map(\.spectralBrightnessHz))
         beatRegularity = MinMax(tracks.compactMap(\.beatRegularity))
+        artistFamily = Self.majorityArtistFamilies(tracks: tracks)
     }
 
     // MARK: Energie
@@ -192,6 +196,62 @@ public final class FingerprintDataset {
         return true
     }
 
+    // MARK: Genre-Familie (Künstler-Ebene, #32)
+
+    /// Die für die Distanz maßgebliche Genre-Familie. Das **Track-eigene** Tag
+    /// führt (ein echtes Signal für genau diesen Titel); fehlt es, füllt die
+    /// **Künstler-Mehrheit** die Lücke. So landen leer getaggte Titel bekannter
+    /// Acts (Real McCoy & Co.) in ihrer Familie, ohne korrekt getaggte Titel zu
+    /// überstimmen — an der Testscheibe der Unterschied zwischen „Real McCoy in
+    /// 9 Pop-Nachbarschaften" und „0". Neutral (`nil`), wenn beides fehlt.
+    private func resolvedFamily(_ track: TrackFingerprint) -> GenreFamily? {
+        if let own = track.genreFamily { return own }
+        guard let key = track.artistKey else { return nil }
+        return artistFamily[key]
+    }
+
+    /// Genre-Familie je Künstler aus dem **Mehrheitsvotum** seiner getaggten
+    /// Titel (#32). Stil ist in dieser Ära eine Künstler-Eigenschaft; leere oder
+    /// falsche Compilation-Tags einzelner Titel füllt so die Mehrheit des
+    /// Künstlers. Nur eine **echte** Mehrheit (> 50 % der getaggten Vorkommen)
+    /// zählt; bei Widerspruch bleibt der Künstler neutral (fehlt im Ergebnis,
+    /// Ehrlichkeitsgesetz). Aggregiert über `artistKey` (Künstler-MBID, sonst
+    /// Name), sodass Namensvarianten zusammenfallen.
+    private static func majorityArtistFamilies(tracks: [TrackFingerprint]) -> [String: GenreFamily] {
+        var tally: [String: [GenreFamily: Int]] = [:]
+        for track in tracks {
+            guard let key = track.artistKey, let family = track.genreFamily else { continue }
+            tally[key, default: [:]][family, default: 0] += 1
+        }
+        var result: [String: GenreFamily] = [:]
+        for (key, votes) in tally {
+            let total = votes.values.reduce(0, +)
+            // Deterministische Mehrheit: meiste Stimmen, bei Gleichstand die in der
+            // Familien-Reihenfolge frühere (dance vor pop — wie in `classify`).
+            guard let winner = votes.max(by: { lhs, rhs in
+                lhs.value != rhs.value
+                    ? lhs.value < rhs.value
+                    : familyRank(lhs.key) > familyRank(rhs.key)
+            }) else { continue }
+            if Double(winner.value) / Double(total) > minArtistGenreConfidence {
+                result[key] = winner.key
+            }
+        }
+        return result
+    }
+
+    /// Rang in der Familien-Prioritätsreihenfolge — für den deterministischen
+    /// Gleichstand-Bruch beim Mehrheitsvotum.
+    private static func familyRank(_ family: GenreFamily) -> Int {
+        GenreFamily.allCases.firstIndex(of: family) ?? GenreFamily.allCases.count
+    }
+
+    /// Schwelle der Künstler-Mehrheit: **mehr als die Hälfte** der getaggten
+    /// Vorkommen müssen dieselbe Familie tragen, sonst bleibt der Künstler neutral.
+    /// An der Testscheibe kalibriert — darüber kein zusätzlicher Gewinn, darunter
+    /// wachsende Fehlzuordnung; > 0,5 ist die natürliche „echte Mehrheit"-Grenze.
+    private static let minArtistGenreConfidence = 0.5
+
     /// Gewichtete Distanz: die Ära führt (die Empfehlung soll in der Zeit bleiben),
     /// dann das **Tempo** (der schärfste Trenner, Dance ~140 vs. Rap ~90 — jetzt mit der
     /// BPM-Confidence gewichtet, #30, damit ein unsicher gemessener Beat nicht falsch
@@ -260,10 +320,12 @@ public final class FingerprintDataset {
 
         // Genre-Familie: eine weiche Neigung (Phase 5b). Gleiche Familie kein
         // Beitrag, andere Familie voller Gewichtsbeitrag — der Trenner gegen den
-        // Tag-Fremdkörper (der Dance-Titel in einer Pop/Rock-Nachbarschaft). Fehlt
-        // die Familie bei einem der beiden oder ist sie „Unknown"/uneindeutig,
-        // zählt sie neutral (kein Beitrag): eine Neigung, kein Urteil.
-        if let anchorFamily = anchor.genreFamily, let candidateFamily = candidate.genreFamily {
+        // Tag-Fremdkörper (der Dance-Titel in einer Pop/Rock-Nachbarschaft). Die
+        // Familie ist künstlerweise repariert (#32): fehlt das Track-Tag, füllt sie
+        // die Mehrheit des Künstlers, sodass leer getaggte Real-McCoy-Titel & Co.
+        // aus Pop-Nachbarschaften fallen. Fehlt sie bei einem der beiden oder ist
+        // sie „Unknown"/uneindeutig, zählt sie neutral: eine Neigung, kein Urteil.
+        if let anchorFamily = resolvedFamily(anchor), let candidateFamily = resolvedFamily(candidate) {
             sum += 2.0 * (candidateFamily == anchorFamily ? 0 : 1)
         }
 

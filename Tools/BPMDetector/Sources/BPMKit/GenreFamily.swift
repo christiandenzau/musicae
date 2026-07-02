@@ -64,4 +64,14 @@ extension TrackFingerprint {
     /// Die grobe Genre-Familie dieses Titels — `nil`, wenn das Tag fehlt,
     /// „Unknown" ist oder keiner Familie sicher zuzuordnen ist (dann neutral).
     public var genreFamily: GenreFamily? { GenreFamily.classify(genre) }
+
+    /// Kennung für die künstlerweise Genre-Reparatur (#32): bevorzugt die
+    /// Künstler-MBID (führt Namensvarianten wie „Real McCoy" / „M.C. Sar & The
+    /// Real McCoy" zusammen), sonst der kleingeschriebene Künstlername. `nil`,
+    /// wenn beides fehlt — dann keine Künstler-Aggregation für diesen Titel.
+    var artistKey: String? {
+        if let id = artistId, !id.isEmpty { return id }
+        if let name = artist?.lowercased(), !name.isEmpty { return name }
+        return nil
+    }
 }

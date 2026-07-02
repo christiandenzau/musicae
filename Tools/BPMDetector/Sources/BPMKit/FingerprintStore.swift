@@ -41,6 +41,12 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
     /// Genre-Familien-Achse (Phase 5b, `GenreFamily`). Keine Re-Analyse nötig,
     /// das Tag steht schon in der DB; das Fingerprint-Tool lässt es leer.
     public var genre: String? = nil
+    /// Künstler-MBID (roh, denormalisiert aus `extended_metadata`). **Transient:**
+    /// wie `genre` nicht in `CodingKeys` — in der App beim Join geladen, trägt die
+    /// Künstler-Ebene der Genre-Reparatur (#32): die weiche Genre-Familie leer
+    /// getaggter Titel wird aus der Mehrheit ihres Künstlers gefüllt. Fehlt die
+    /// MBID, dient der Künstlername als Ersatzschlüssel.
+    public var artistId: String? = nil
     public var analyzedAt: Date
 
     public static let databaseTableName = "track_fingerprints"
@@ -77,6 +83,7 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
         beatRegularity: Double? = nil,
         mixVersion: String?,
         genre: String? = nil,
+        artistId: String? = nil,
         analyzedAt: Date
     ) {
         self.path = path
@@ -94,6 +101,7 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
         self.beatRegularity = beatRegularity
         self.mixVersion = mixVersion
         self.genre = genre
+        self.artistId = artistId
         self.analyzedAt = analyzedAt
     }
 }
