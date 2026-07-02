@@ -84,4 +84,44 @@ final class AudioAxesTests: XCTestCase {
         let second = analyzer.analyze(samples: signal, sampleRate: sampleRate)
         XCTAssertEqual(first, second)
     }
+
+    // MARK: - Beat-Regelmäßigkeit (#23)
+
+    /// Anschläge in *zufälligen* Abständen (deterministischer LCG) — kein fester
+    /// Loop, also schwache Autokorrelation.
+    private func irregularClicks(seconds: Double, seed: UInt64 = 0xABCD_EF01_2345_6789) -> [Float] {
+        let count = Int(seconds * sampleRate)
+        var signal = [Float](repeating: 0, count: count)
+        var state = seed
+        var index = 0
+        while index < count {
+            signal[index] = 1
+            state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            let unit = Double(state >> 40) / Double(1 << 24)   // 0…1
+            index += max(1, Int((0.15 + 0.6 * unit) * sampleRate))   // Abstand 0,15…0,75 s
+        }
+        return signal
+    }
+
+    func testBeatRegularityHigherForSteadyPulse() throws {
+        // Festes Metronom → starke Autokorrelation im Loop-Fenster; unregelmäßige
+        // Anschläge → schwache. Genau die maschinell-vs-organisch-Trennung, die
+        // Dance von Rock scheidet.
+        let steady = ClickTrackGenerator.make(bpm: 128, durationSeconds: 12)
+        let irregular = irregularClicks(seconds: 12)
+        let steadyReg = try XCTUnwrap(analyzer.beatRegularity(samples: steady, sampleRate: sampleRate))
+        let irregularReg = try XCTUnwrap(analyzer.beatRegularity(samples: irregular, sampleRate: sampleRate))
+        XCTAssertGreaterThan(steadyReg, irregularReg, "Festes Metronom regelmäßiger als Zufallsanschläge")
+        XCTAssertGreaterThan(steadyReg, 0.3, "Ein festes Metronom sollte klar loopregelmäßig sein")
+    }
+
+    func testBeatRegularityTooShortReturnsNil() {
+        XCTAssertNil(analyzer.beatRegularity(samples: [Float](repeating: 0.1, count: 256), sampleRate: sampleRate))
+    }
+
+    func testBeatRegularityDeterministic() throws {
+        let signal = ClickTrackGenerator.make(bpm: 130, durationSeconds: 8)
+        XCTAssertEqual(analyzer.beatRegularity(samples: signal, sampleRate: sampleRate),
+                       analyzer.beatRegularity(samples: signal, sampleRate: sampleRate))
+    }
 }

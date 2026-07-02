@@ -489,6 +489,12 @@ func analyzeOne(
     guard let axes = axesAnalyzer.analyze(samples: samples, sampleRate: sampleRate) else { return nil }
 
     let bpm = bpmEstimator.estimate(samples: samples, sampleRate: sampleRate)
+    // Beat-Regelmäßigkeit (#23) aus einer separaten Ladung bei höherer Rate, damit
+    // die perkussiven Hochfrequenzen (Becken/Hi-Hats > 5,5 kHz) die Onsets scharf
+    // zeichnen. Die größere FFT (2048@22050) hält die Auflösung wie 1024@11025.
+    let rhythmAnalyzer = AudioAxesAnalyzer(fftSize: 2048, hopSize: 1024)
+    let beatRegularity = (try? AudioLoader.loadMonoSamples(url: url, sampleRate: AudioLoader.beatSampleRate))
+        .flatMap { rhythmAnalyzer.beatRegularity(samples: $0, sampleRate: AudioLoader.beatSampleRate) }
     let facts = await trackFacts(url: url)
     let mixVersion = MixVersionParser.parse(title: facts.title)
     let duration = Double(samples.count) / sampleRate
@@ -503,6 +509,7 @@ func analyzeOne(
         bpm: bpm?.bpm,
         bpmConfidence: bpm?.confidence,
         axes: axes,
+        beatRegularity: beatRegularity,
         mixVersion: mixVersion,
         analyzedAt: analyzedAt
     )

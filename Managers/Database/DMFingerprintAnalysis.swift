@@ -19,10 +19,10 @@ extension DatabaseManager {
     static let fingerprintMigrationIdentifier = "v12_background_compute_fingerprints"
 
     /// Bump this whenever the analysis changes in a way that should re-run over the whole
-    /// library (e.g. the wider BPM search band). A plain UserDefaults marker — deliberately
-    /// not a schema migration, so it can't collide with parallel migrations on sibling
-    /// branches and is safe across iterative local builds.
-    static let fingerprintAnalyzerVersion = 2
+    /// library (e.g. the wider BPM search band, or v3's timbre axes). A plain UserDefaults
+    /// marker — deliberately not a schema migration, so it can't collide with parallel
+    /// migrations on sibling branches and is safe across iterative local builds.
+    static let fingerprintAnalyzerVersion = 3
     private static let analyzerVersionKey = "fingerprintAnalyzerVersion"
 
     private struct FingerprintProgress: Codable {
@@ -207,6 +207,12 @@ extension DatabaseManager {
         guard let axes = axesAnalyzer.analyze(samples: samples, sampleRate: sampleRate) else { return nil }
 
         let bpm = bpmEstimator.estimate(samples: samples, sampleRate: sampleRate)
+        // Beat-Regelmäßigkeit (#23) aus einer separaten Ladung bei höherer Rate —
+        // erst dort zeichnen die perkussiven Hochfrequenzen die Onsets scharf. nil,
+        // wenn das Signal zu kurz ist (dann in der Nachbardistanz neutral).
+        let rhythmAnalyzer = AudioAxesAnalyzer(fftSize: 2048, hopSize: 1024)
+        let beatRegularity = (try? AudioLoader.loadMonoSamples(url: url, sampleRate: AudioLoader.beatSampleRate))
+            .flatMap { rhythmAnalyzer.beatRegularity(samples: $0, sampleRate: AudioLoader.beatSampleRate) }
         let mixVersion = MixVersionParser.parse(title: title)
 
         return ComputedFingerprint(
@@ -217,6 +223,7 @@ extension DatabaseManager {
             dynamicRangeDb: axes.dynamicRangeDb,
             spectralBrightnessHz: axes.spectralBrightnessHz,
             bassRatio: axes.bassRatio,
+            beatRegularity: beatRegularity,
             mixVersion: mixVersion,
             // Denormalized once here from the single classification source, so the
             // smart-playlist query can filter on it directly (#16).
