@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0FEBF910D544F74F81C33FDD /* BPMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50ADC01909D081A8A7E5F69A /* BPMKit */; };
 		552A58402EC0629A00F6D8C0 /* SFBAudioEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 552A583F2EC0629A00F6D8C0 /* SFBAudioEngine */; };
 		552CE3E52FE3263900A5C93D /* Crescendo in Frameworks */ = {isa = PBXBuildFile; productRef = 552CE3E42FE3263900A5C93D /* Crescendo */; };
 		5590877F2DE0C078009E7719 /* MusicaeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5590877E2DE0C078009E7719 /* MusicaeApp.swift */; };
 		55B0DEC12DE3A58400A41ED9 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 55B0DEC02DE3A58400A41ED9 /* GRDB */; };
-		0FEBF910D544F74F81C33FDD /* BPMKit in Frameworks */ = {isa = PBXBuildFile; productRef = 50ADC01909D081A8A7E5F69A /* BPMKit */; };
 		55D673CF2E42CEA50095A358 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 55D673CE2E42CEA50095A358 /* Sparkle */; };
 /* End PBXBuildFile section */
 
@@ -198,7 +198,7 @@
 				55D673CD2E42CEA50095A358 /* XCRemoteSwiftPackageReference "Sparkle" */,
 				552A583E2EC0629A00F6D8C0 /* XCRemoteSwiftPackageReference "SFBAudioEngine" */,
 				552CE3E32FE3263900A5C93D /* XCRemoteSwiftPackageReference "CrescendoKit" */,
-				CD4F38C3B596E28E5A17CF4F /* XCLocalSwiftPackageReference "BPMDetector" */,
+				CD4F38C3B596E28E5A17CF4F /* XCLocalSwiftPackageReference "Tools/BPMDetector" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 550F4A052DB45B1A005F794E;
@@ -386,7 +386,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = "Development Build";
 				"OTHER_CODE_SIGN_FLAGS[sdk=*]" = "--timestamp";
 				PRODUCT_BUNDLE_IDENTIFIER = org.Musicae.debug;
@@ -435,7 +435,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = "Development Build";
 				"OTHER_CODE_SIGN_FLAGS[sdk=*]" = "--timestamp";
 				PRODUCT_BUNDLE_IDENTIFIER = org.Musicae;
@@ -473,7 +473,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		CD4F38C3B596E28E5A17CF4F /* XCLocalSwiftPackageReference "BPMDetector" */ = {
+		CD4F38C3B596E28E5A17CF4F /* XCLocalSwiftPackageReference "Tools/BPMDetector" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Tools/BPMDetector;
 		};
@@ -517,7 +517,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		50ADC01909D081A8A7E5F69A /* BPMKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = CD4F38C3B596E28E5A17CF4F /* XCLocalSwiftPackageReference "BPMDetector" */;
+			package = CD4F38C3B596E28E5A17CF4F /* XCLocalSwiftPackageReference "Tools/BPMDetector" */;
 			productName = BPMKit;
 		};
 		552A583F2EC0629A00F6D8C0 /* SFBAudioEngine */ = {

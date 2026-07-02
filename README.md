@@ -73,7 +73,7 @@
 
 ###  Requirements
 
-- macOS 14 or later
+- macOS 15 or later
 
 ### ⚙️ Installation
 
@@ -357,7 +357,7 @@ Musicae wouldn't be possible without following open source projects!
 
 ### Development Setup
 
-- Make sure you’re running macOS 14 or later.
+- Make sure you’re running macOS 15 or later.
 - Install [Xcode](https://developer.apple.com/xcode/).
 - Clone the repository and open `Musicae.xcodeproj`
 

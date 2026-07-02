@@ -56,6 +56,26 @@ final class SFBPlaybackBackend: NSObject, PlaybackBackend {
         sfbPlayer.totalTime ?? 0
     }
 
+    /// Installs (or removes, when `handler` is nil) a tap on the SFB source node
+    /// that forwards live PCM buffers for the amplifier visualization. The tap
+    /// observes the signal at the head of the chain without altering it.
+    @discardableResult
+    func installVisualizationTap(_ handler: ((AVAudioPCMBuffer) -> Void)?) -> Bool {
+        let node = sfbPlayer.sourceNode
+        if visualizationTapInstalled {
+            node.removeTap(onBus: 0)
+            visualizationTapInstalled = false
+        }
+        visualizationTapHandler = handler
+        guard let handler else { return true }
+        let format = node.outputFormat(forBus: 0)
+        node.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+            handler(buffer)
+        }
+        visualizationTapInstalled = true
+        return true
+    }
+
     // MARK: - Private Properties
 
     private let sfbPlayer: SFBPlayer
@@ -63,6 +83,10 @@ final class SFBPlaybackBackend: NSObject, PlaybackBackend {
     private var currentURL: URL?
     private var delegateBridge: SFBAudioPlayerDelegateBridge?
     private static let maxPreBufferSize: UInt64 = 100 * 1024 * 1024
+
+    /// Live visualization tap on the source node (see PlaybackBackend).
+    private var visualizationTapHandler: ((AVAudioPCMBuffer) -> Void)?
+    private var visualizationTapInstalled = false
 
     // MARK: - Audio Effects Nodes
 

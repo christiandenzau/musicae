@@ -47,6 +47,8 @@ struct MusicaeApp: App {
         .windowResizability(.contentSize)
         .handlesExternalEvents(matching: ["main"])
         
+        amplifierWindow
+
         equalizerWindow
 
         .commands {
@@ -78,6 +80,16 @@ struct MusicaeApp: App {
         .handlesExternalEvents(matching: [])
         .defaultSize(width: 500, height: 300)
         .windowResizability(.contentSize)
+    }
+
+    private var amplifierWindow: some Scene {
+        WindowGroup("MA-90 Verstärker", id: "amplifier") {
+            AmplifierView()
+                .environmentObject(appCoordinator.playbackManager)
+                .environmentObject(appCoordinator.playlistManager)
+        }
+        .handlesExternalEvents(matching: [])
+        .defaultSize(width: 640, height: 460)
     }
 }
 
@@ -559,6 +571,17 @@ extension MusicaeApp {
                 }
             }
             .keyboardShortcut("e", modifiers: [.command, .option])
+
+            Button {
+                openWindow(id: "amplifier")
+            } label: {
+                if #available(macOS 26.0, *) {
+                    Label("MA-90 Verstärker", systemImage: "hifispeaker.2.fill")
+                } else {
+                    Text("MA-90 Verstärker")
+                }
+            }
+            .keyboardShortcut("a", modifiers: [.command, .option])
 
             Button {
                 MiniPlayerWindowManager.shared.show()

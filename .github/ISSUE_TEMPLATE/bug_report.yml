@@ -55,11 +55,10 @@ body:
     id: macos
     attributes:
       label: macOS Version
-      description: Musicae requires macOS 14.0 or higher
+      description: Musicae requires macOS 15.0 or higher
       options:
         - macOS 26 (Tahoe)
         - macOS 15 (Sequoia)
-        - macOS 14 (Sonoma)
     validations:
       required: true
       
@@ -86,5 +85,5 @@ body:
       options:
         - label: I searched existing issues to avoid duplicates
           required: true
-        - label: I'm running macOS 14.0 or higher
+        - label: I'm running macOS 15.0 or higher
           required: true

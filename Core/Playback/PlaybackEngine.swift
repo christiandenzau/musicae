@@ -7,6 +7,7 @@
 // plus the backend files, and call sites stay untouched.
 //
 
+import AVFoundation
 import Foundation
 
 // MARK: - Audio Player State
@@ -138,6 +139,18 @@ protocol PlaybackBackend: AnyObject {
     func applyEQCustom(gains: [Float])
     func setPreamp(_ gain: Float)
     func getPreamp() -> Float
+
+    /// Installs a tap that forwards live PCM buffers for visualization, or removes
+    /// it when `handler` is nil. Returns whether the backend supports a real tap
+    /// (SFB does; Crescendo is a closed engine and returns false, letting callers
+    /// fall back to a synthetic source).
+    @discardableResult
+    func installVisualizationTap(_ handler: ((AVAudioPCMBuffer) -> Void)?) -> Bool
+}
+
+extension PlaybackBackend {
+    /// Default: no tap support (e.g. Crescendo). SFB overrides this.
+    func installVisualizationTap(_ handler: ((AVAudioPCMBuffer) -> Void)?) -> Bool { false }
 }
 
 /// Shared EQ headroom policy used by playback backends.
@@ -276,6 +289,13 @@ public class PlaybackEngine: NSObject {
 
     public func togglePlayPause() {
         backend.togglePlayPause()
+    }
+
+    /// Forwards a visualization tap request to the active backend. Returns whether
+    /// a real tap was installed (false → caller should use a synthetic source).
+    @discardableResult
+    public func installVisualizationTap(_ handler: ((AVAudioPCMBuffer) -> Void)?) -> Bool {
+        backend.installVisualizationTap(handler)
     }
 
     @discardableResult

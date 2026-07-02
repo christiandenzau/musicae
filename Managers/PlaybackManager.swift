@@ -293,6 +293,38 @@ class PlaybackManager: NSObject, ObservableObject {
     func setVolume(_ newVolume: Float) {
         volume = max(0, min(1, newVolume))
     }
+
+    // MARK: - Amplifier Visualization
+
+    /// Starts feeding the 3D amplifier's meters. On the SFB backend this installs
+    /// a real audio tap; on Crescendo (a closed engine with no tap point) it starts
+    /// a synthetic source driven by play state and volume.
+    @MainActor
+    func startVisualization() {
+        let provider = AudioVisualizationProvider.shared
+        switch MediaBackend.current {
+        case .sfb:
+            provider.stopSynthetic()
+            audioPlayer.installVisualizationTap { buffer in
+                provider.ingest(buffer: buffer)
+            }
+        case .crescendo:
+            audioPlayer.installVisualizationTap(nil)
+            provider.startSynthetic(
+                isPlaying: { [weak self] in self?.isPlaying ?? false },
+                volume: { [weak self] in self?.volume ?? 0 }
+            )
+        }
+    }
+
+    /// Stops all visualization feeds and clears the meters.
+    @MainActor
+    func stopVisualization() {
+        audioPlayer.installVisualizationTap(nil)
+        let provider = AudioVisualizationProvider.shared
+        provider.stopSynthetic()
+        provider.reset()
+    }
     
     func updateNowPlayingInfo() {
         guard let track = currentTrack else { return }
