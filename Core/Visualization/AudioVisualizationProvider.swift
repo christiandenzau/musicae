@@ -29,10 +29,6 @@ final class AudioVisualizationProvider: ObservableObject {
     private let fftSize = 2048
     private let analyzer: SpectrumAnalyzer
 
-    // Ballistics: attack (rising) is fast, decay (falling) is slow.
-    private let attack: Float = 0.6
-    private let decay: Float = 0.12
-
     // Rolling buffer so we can assemble a full FFT window even when the tap
     // hands us smaller chunks.
     private var monoAccum: [Float] = []
@@ -144,16 +140,15 @@ final class AudioVisualizationProvider: ObservableObject {
         return min(max((db + 50) / 50, 0), 1)       // -50 dB floor
     }
 
+    // These publish raw targets now; per-frame ballistics (smoothing) happens in
+    // the render loop (AmplifierRig), decoupled from the audio tap rate.
     private func applySpectrum(_ target: [Float]) {
-        for i in 0..<min(bandCount, target.count) {
-            let coeff = target[i] > spectrum[i] ? attack : decay
-            spectrum[i] += (target[i] - spectrum[i]) * coeff
-        }
+        spectrum = target
     }
 
     private func applyLevels(_ targetL: Float, _ targetR: Float) {
-        levelL += (targetL - levelL) * (targetL > levelL ? attack : decay)
-        levelR += (targetR - levelR) * (targetR > levelR ? attack : decay)
+        levelL = targetL
+        levelR = targetR
     }
 
     func reset() {

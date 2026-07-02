@@ -97,15 +97,16 @@ final class SpectrumAnalyzer {
 
         // Group bins into bands (mean magnitude), map to dB, normalize to 0...1.
         var bands = [Float](repeating: 0, count: bandCount)
-        let scale = 1.0 / Float(fftSize)
+        let scale = 2.0 / Float(fftSize)
         for b in 0..<bandCount {
             let lo = bandEdges[b]
             let hi = max(bandEdges[b + 1], lo + 1)
-            var sum: Float = 0
-            for bin in lo..<hi { sum += magnitudes[bin] }
-            let mean = sum / Float(hi - lo) * scale
-            let db = 20 * log10f(max(mean, 1e-7))       // -140 dB … 0 dB-ish
-            let norm = (db + 60) / 60                    // -60 dB floor → 0, 0 dB → 1
+            // Peak bin per band — averaging over a wide band washes out narrowband
+            // tones and left the meters pinned near zero.
+            var peak: Float = 0
+            for bin in lo..<hi { peak = max(peak, magnitudes[bin]) }
+            let db = 20 * log10f(max(peak * scale, 1e-7))
+            let norm = (db + 80) / 80                    // -80 dB floor → 0, 0 dB → 1 (sensitive for quiet input)
             bands[b] = min(max(norm, 0), 1)
         }
         return bands

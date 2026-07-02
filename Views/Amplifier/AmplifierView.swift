@@ -16,6 +16,7 @@
 //
 
 import AppKit
+import QuartzCore
 import RealityKit
 import SwiftUI
 
@@ -33,7 +34,16 @@ final class AmplifierRig {
     private var needleL: (entity: RKEntity, baseWorld: simd_quatf)?
     private var needleR: (entity: RKEntity, baseWorld: simd_quatf)?
     private var volumeKnob: (entity: RKEntity, baseWorld: simd_quatf)?
-    private var knobIndicator: RKEntity?
+
+    // Smoothed current values, interpolated toward the provider's targets each frame.
+    private var curBars = [Float](repeating: 0, count: 12)
+    private var curLevelL: Float = 0
+    private var curLevelR: Float = 0
+
+    #if DEBUG
+    private var frameCount = 0
+    private var lastFPSTime: Double = 0
+    #endif
 
     // LEDs
     private var powerLED: RKEntity?
@@ -50,14 +60,13 @@ final class AmplifierRig {
     private let barGrowAxis = SIMD3<Float>(0, 1, 0)   // bars grow along local Y (looked right on run 1)
     private let barMaxGrow: Float = 2.5
     private let worldSwingAxis = SIMD3<Float>(0, 0, 1) // world Z = toward the viewer
-    private let needleSwing: Float = .pi / 3          // total needle travel (~60°)
+    private let needleSwing: Float = -.pi / 3         // level 0 = rest (built pose); sign sets swing direction
     private let knobTravel: Float = -.pi * 1.5        // ~270° across 0…1; negative so louder = clockwise
+    // Per-frame ballistics (~60fps): fast attack, slow decay for an analog feel.
+    private let attack: Float = 0.45
+    private let decay: Float = 0.08
 
     var isBound: Bool { !bars.isEmpty || needleL != nil }
-
-    fileprivate func setKnobIndicator(_ entity: RKEntity) {
-        knobIndicator = entity
-    }
 
     fileprivate func bind(to root: RKEntity) {
         bars = (0..<12).compactMap { index in
@@ -85,26 +94,51 @@ final class AmplifierRig {
         }
     }
 
+    /// Called every render frame. Interpolates cached values toward the provider's
+    /// raw targets (ballistics) and writes the transforms — decoupled from the audio
+    /// tap rate, so motion stays smooth regardless of update cadence.
     func apply(spectrum: [Float], levelL: Float, levelR: Float, volume: Float, isPlaying: Bool) {
-        for (index, item) in bars.enumerated() where index < spectrum.count {
-            let grow = spectrum[index] * barMaxGrow
+        // When stopped, targets fall to rest — guards against a stale value when
+        // the tap stops delivering buffers (otherwise the meters freeze mid-air).
+        let barTargets = isPlaying ? spectrum : []
+        let lTarget = isPlaying ? levelL : 0
+        let rTarget = isPlaying ? levelR : 0
+        for i in curBars.indices {
+            let t = i < barTargets.count ? barTargets[i] : 0
+            curBars[i] += (t - curBars[i]) * (t > curBars[i] ? attack : decay)
+        }
+        curLevelL += (lTarget - curLevelL) * (lTarget > curLevelL ? attack : decay)
+        curLevelR += (rTarget - curLevelR) * (rTarget > curLevelR ? attack : decay)
+
+        for (index, item) in bars.enumerated() where index < curBars.count {
+            let grow = curBars[index] * barMaxGrow
             item.entity.scale = item.baseScale * (SIMD3<Float>(repeating: 1) + barGrowAxis * grow)
         }
         if let needleL {
-            needleL.entity.setOrientation(spin((levelL - 0.5) * needleSwing) * needleL.baseWorld, relativeTo: nil)
+            needleL.entity.setOrientation(spin(curLevelL * needleSwing) * needleL.baseWorld, relativeTo: nil)
         }
         if let needleR {
-            needleR.entity.setOrientation(spin((levelR - 0.5) * needleSwing) * needleR.baseWorld, relativeTo: nil)
+            needleR.entity.setOrientation(spin(curLevelR * needleSwing) * needleR.baseWorld, relativeTo: nil)
         }
         if let volumeKnob {
             let angle = (volume - 0.5) * knobTravel
             volumeKnob.entity.setOrientation(spin(angle) * volumeKnob.baseWorld, relativeTo: nil)
-            knobIndicator?.orientation = spin(angle)   // visible pointer (knob mesh has no marking)
         }
         if lastPlaying != isPlaying {
             lastPlaying = isPlaying
             setGlow(cdLED, color: .systemRed, on: isPlaying)
         }
+        #if DEBUG
+        frameCount += 1
+        let now = CACurrentMediaTime()
+        if lastFPSTime == 0 {
+            lastFPSTime = now
+        } else if now - lastFPSTime >= 1 {
+            Logger.info("[Amp] fps=\(frameCount) specMax=\(String(format: "%.2f", curBars.max() ?? 0)) L=\(String(format: "%.2f", curLevelL)) R=\(String(format: "%.2f", curLevelR))")
+            frameCount = 0
+            lastFPSTime = now
+        }
+        #endif
     }
 
     // MARK: - Interaction
@@ -171,10 +205,10 @@ final class AmplifierRig {
 struct AmplifierView: View {
     @EnvironmentObject private var playbackManager: PlaybackManager
     @EnvironmentObject private var playlistManager: PlaylistManager
-    @ObservedObject private var viz = AudioVisualizationProvider.shared
 
     @State private var rig = AmplifierRig()
     @State private var loadFailed = false
+    @State private var frameSub: EventSubscription?
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -199,27 +233,6 @@ struct AmplifierView: View {
                 content.add(amp)
                 rig.bind(to: amp)
 
-                // The volume knob is a symmetric cylinder with no marking, so its
-                // rotation is invisible. Attach a pointer that orbits the knob center
-                // (world-space pivot) to make the turn readable until the Blender model
-                // gets a real notch. TUNE: pointer size/offset below.
-                if let knob = amp.findEntity(named: "Volume") {
-                    let bounds = knob.visualBounds(relativeTo: nil)
-                    let radius = max(bounds.extents.x, bounds.extents.y) * 0.5
-                    if radius > 0 {
-                        let pivot = RKEntity()
-                        content.add(pivot)
-                        pivot.setPosition(bounds.center, relativeTo: nil)
-                        let pointer = ModelEntity(
-                            mesh: .generateBox(size: [radius * 0.12, radius * 0.7, radius * 0.12]),
-                            materials: [UnlitMaterial(color: NSColor.white)]
-                        )
-                        pointer.position = [0, radius * 0.5, radius * 0.85]  // up + in front of the knob
-                        pivot.addChild(pointer)
-                        rig.setKnobIndicator(pivot)
-                    }
-                }
-
                 let camera = PerspectiveCamera()
                 camera.camera.fieldOfViewInDegrees = 40
                 camera.look(at: .zero, from: [0, 0.05, 1.1], upVector: [0, 1, 0], relativeTo: nil)
@@ -229,14 +242,24 @@ struct AmplifierView: View {
                 light.light.intensity = 3000
                 light.look(at: .zero, from: [0.4, 0.6, 1.0], upVector: [0, 1, 0], relativeTo: nil)
                 content.add(light)
+
+                // Drive the animation from a real 60fps render loop, decoupled from
+                // SwiftUI. Reading provider state here (instead of via @ObservedObject)
+                // avoids a full view re-render on every audio update.
+                let provider = AudioVisualizationProvider.shared
+                let manager = playbackManager
+                frameSub = content.subscribe(to: SceneEvents.Update.self) { _ in
+                    MainActor.assumeIsolated {
+                        rig.apply(
+                            spectrum: provider.spectrum,
+                            levelL: provider.levelL,
+                            levelR: provider.levelR,
+                            volume: manager.volume,
+                            isPlaying: manager.isPlaying
+                        )
+                    }
+                }
             } update: { _ in
-                rig.apply(
-                    spectrum: viz.spectrum,
-                    levelL: viz.levelL,
-                    levelR: viz.levelR,
-                    volume: playbackManager.volume,
-                    isPlaying: playbackManager.isPlaying
-                )
             }
             .gesture(
                 SpatialTapGesture()
