@@ -315,4 +315,22 @@ final class FingerprintQueryTests: XCTestCase {
         XCTAssertEqual(distance("noBeat"), distance("twin"), accuracy: 1e-9)
         XCTAssertLessThan(distance("noBeat"), distance("danceIntruder"))
     }
+
+    func testTempoAxisScalesWithBpmConfidence() {
+        // #30: Ein unsicher gemessenes Tempo darf keine harte Distanz erzeugen. Zwei
+        // Kandidaten mit identischem, weit entferntem BPM, aber unterschiedlicher
+        // Confidence — der unsichere bekommt einen kleineren Tempo-Beitrag und ist
+        // damit (bei sonst gleichen Achsen) näher: wir trauen seinem Tempo weniger.
+        // Genau der Hebel gegen den HipHop-Doppeltempo-Fehler (Crossroad 132/49 %).
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: nil, bpm: 140, confidence: 0.9)
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("sureFar", year: 1996, duration: 300, mix: nil, bpm: 90, confidence: 0.9),
+            makeFingerprint("unsureFar", year: 1996, duration: 300, mix: nil, bpm: 90, confidence: 0.3)
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        let sure = neighbors.first { $0.track.path == "sureFar" }?.distance ?? .infinity
+        let unsure = neighbors.first { $0.track.path == "unsureFar" }?.distance ?? .infinity
+        XCTAssertLessThan(unsure, sure)
+    }
 }
