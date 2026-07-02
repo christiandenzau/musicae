@@ -333,4 +333,23 @@ final class FingerprintQueryTests: XCTestCase {
         let unsure = neighbors.first { $0.track.path == "unsureFar" }?.distance ?? .infinity
         XCTAssertLessThan(unsure, sure)
     }
+
+    func testMutualNeighborsFilterHub() {
+        // Hubness-Korrektur (#31): ein „Hub" in einer dichten Region ist zwar nah am
+        // Anker, aber der Anker liegt nicht in seiner engen Nachbarschaft — er wird
+        // gefiltert, während ein isolierter, gegenseitiger Nachbar bleibt.
+        let anchor = makeFingerprint("anchor", year: 1996, duration: 300, mix: nil, bpm: 100)
+        // Isolierter echter Nachbar: der Anker ist sein nächster Nachbar.
+        let trueNeighbor = makeFingerprint("trueNeighbor", year: 1996, duration: 300, mix: nil, bpm: 101)
+        // Hub + dichtes Cluster: das Cluster ist dem Hub viel näher als der Anker,
+        // also fällt der Anker aus dem Top-mutualK des Hubs.
+        var tracks = [anchor, trueNeighbor, makeFingerprint("hub", year: 1996, duration: 300, mix: nil, bpm: 130)]
+        for index in 0..<30 {
+            tracks.append(makeFingerprint("cluster\(index)", year: 1996, duration: 300, mix: nil, bpm: 130 + Double(index) * 0.02))
+        }
+        let dataset = FingerprintDataset(tracks: tracks)
+        let paths = Set(dataset.neighbors(of: anchor, limit: 25, mutualK: 25).map { $0.track.path })
+        XCTAssertTrue(paths.contains("trueNeighbor"), "gegenseitiger Nachbar bleibt")
+        XCTAssertFalse(paths.contains("hub"), "Hub (Anker nicht in seiner Nachbarschaft) wird gefiltert")
+    }
 }

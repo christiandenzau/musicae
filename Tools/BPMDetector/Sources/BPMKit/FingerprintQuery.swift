@@ -149,18 +149,47 @@ public final class FingerprintDataset {
     ///   nicht mehr als verwandt und werden weggelassen — die Liste füllt **nicht** auf
     ///   `limit` auf, wenn es nicht genug wirklich nahe Nachbarn gibt (Ehrlichkeitsgesetz:
     ///   lieber wenige passende als viele mit Füllsel). Default `.infinity` = kein Cutoff.
+    /// - Parameter mutualK: **Hubness-Korrektur** (#31). Ein Kandidat zählt nur, wenn der
+    ///   Anker auch unter *seinen* `mutualK` nächsten liegt — **gegenseitige** Nähe. Das
+    ///   zieht „Hubs" aus dichten Regionen (Dance) heraus, die sonst in fast jeder Liste
+    ///   auftauchen, ohne den Anker wirklich zu treffen. Bei kleinen Mengen (weniger als
+    ///   `mutualK` andere Titel) ist die Bedingung stets erfüllt, ändert also nichts.
     public func neighbors(
         of anchor: TrackFingerprint,
         limit: Int = 10,
-        maxDistance: Double = .infinity
+        maxDistance: Double = .infinity,
+        mutualK: Int = 25
     ) -> [FingerprintNeighbor] {
-        tracks
+        let ranked = tracks
             .filter { $0.path != anchor.path }
             .map { FingerprintNeighbor(track: $0, distance: distance(anchor: anchor, to: $0)) }
             .filter { $0.distance <= maxDistance }
             .sorted { $0.distance < $1.distance }
-            .prefix(limit)
-            .map { $0 }
+
+        var result: [FingerprintNeighbor] = []
+        result.reserveCapacity(limit)
+        for neighbor in ranked where isAnchor(anchor, amongNearest: mutualK, of: neighbor.track) {
+            result.append(neighbor)
+            if result.count >= limit { break }
+        }
+        return result
+    }
+
+    /// Ob `anchor` unter den `k` nächsten Nachbarn von `candidate` liegt. Zählt die
+    /// Titel, die `candidate` näher sind als `anchor`, und bricht ab, sobald `k`
+    /// erreicht sind — für einen Hub (der schnell `k` nähere hat) also früh. Nutzt die
+    /// Symmetrie der Distanz, sodass kein zweiter Datensatz nötig ist.
+    private func isAnchor(_ anchor: TrackFingerprint, amongNearest k: Int, of candidate: TrackFingerprint) -> Bool {
+        guard k > 0 else { return false }
+        let anchorDistance = distance(anchor: candidate, to: anchor)
+        var closer = 0
+        for track in tracks where track.path != candidate.path && track.path != anchor.path {
+            if distance(anchor: candidate, to: track) < anchorDistance {
+                closer += 1
+                if closer >= k { return false }
+            }
+        }
+        return true
     }
 
     /// Gewichtete Distanz: die Ära führt (die Empfehlung soll in der Zeit bleiben),
