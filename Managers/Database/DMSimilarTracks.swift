@@ -36,9 +36,12 @@ extension DatabaseManager {
                 // the shape BPMKit's dataset needs. Personal-library scale — one pass in memory.
                 // `t.genre` fließt als weiche Genre-Familien-Achse mit (Phase 5b) —
                 // aus `tracks.genre`, nicht aus dem Fingerprint: keine Re-Analyse.
+                // Die Künstler-MBID (aus `extended_metadata`) trägt die künstlerweise
+                // Genre-Reparatur (#32): leere Track-Tags füllt die Mehrheit des Acts.
                 let rows = try Row.fetchAll(db, sql: """
                     SELECT t.id AS track_id, t.path AS path, t.title AS title, t.artist AS artist,
                            t.album AS album, t.year AS year, t.duration AS duration, t.genre AS genre,
+                           json_extract(t.extended_metadata, '$.musicBrainzArtistId') AS artist_mbid,
                            f.calculated_bpm AS bpm, f.bpm_confidence AS conf,
                            f.rms_loudness_db AS loud, f.dynamic_range_db AS dyn,
                            f.spectral_brightness_hz AS bright, f.bass_ratio AS bass,
@@ -79,6 +82,7 @@ extension DatabaseManager {
                         beatRegularity: row["beat"],
                         mixVersion: row["mix"],
                         genre: row["genre"],
+                        artistId: row["artist_mbid"],
                         analyzedAt: row["analyzed"]
                     ))
                     trackIdByPath[path] = trackId

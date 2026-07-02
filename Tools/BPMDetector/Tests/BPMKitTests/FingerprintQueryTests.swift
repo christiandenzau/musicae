@@ -22,12 +22,14 @@ final class FingerprintQueryTests: XCTestCase {
         brightness: Double = 1200,
         confidence: Double? = nil,
         genre: String? = nil,
-        beatRegularity: Double? = nil
+        beatRegularity: Double? = nil,
+        artist: String = "Künstler",
+        artistId: String? = nil
     ) -> TrackFingerprint {
         TrackFingerprint(
             path: path,
             title: path,
-            artist: "Künstler",
+            artist: artist,
             album: "Album",
             year: year,
             durationSeconds: duration,
@@ -37,6 +39,7 @@ final class FingerprintQueryTests: XCTestCase {
             beatRegularity: beatRegularity,
             mixVersion: mix,
             genre: genre,
+            artistId: artistId,
             analyzedAt: Date()
         )
     }
@@ -351,5 +354,87 @@ final class FingerprintQueryTests: XCTestCase {
         let paths = Set(dataset.neighbors(of: anchor, limit: 25, mutualK: 25).map { $0.track.path })
         XCTAssertTrue(paths.contains("trueNeighbor"), "gegenseitiger Nachbar bleibt")
         XCTAssertFalse(paths.contains("hub"), "Hub (Anker nicht in seiner Nachbarschaft) wird gefiltert")
+    }
+
+    // MARK: - Genre-Reparatur auf Künstler-Ebene (#32)
+
+    func testArtistMajorityFillsEmptyGenreFamily() {
+        // Ein Künstler mit mehreren Dance-Titeln plus einem *leer* getaggten Vorkommen
+        // („Unknown Genre"). Die Künstler-Mehrheit füllt den leeren Titel mit Dance,
+        // sodass er hinter den echten Pop-Nachbarn fällt — genau das Real-McCoy-Muster.
+        let anchor = makeFingerprint("anchor", year: 1993, duration: 240, mix: nil, genre: "Pop", artist: "PopAnchor")
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("popTwin", year: 1993, duration: 240, mix: nil, genre: "Pop", artist: "PopSinger"),
+            makeFingerprint("danceEmpty", year: 1993, duration: 240, mix: nil, genre: nil, artist: "DanceAct"),
+            makeFingerprint("d1", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "DanceAct"),
+            makeFingerprint("d2", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "DanceAct"),
+            makeFingerprint("d3", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "DanceAct")
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        func distance(_ path: String) -> Double {
+            neighbors.first { $0.track.path == path }?.distance ?? .infinity
+        }
+        // Der echte Pop-Nachbar bleibt vorn; der gefüllte Dance-Titel liegt genau um das
+        // Genre-Achsengewicht (2) dahinter — sonst ist alles gleich.
+        XCTAssertLessThan(distance("popTwin"), distance("danceEmpty"))
+        XCTAssertEqual(distance("danceEmpty") - distance("popTwin"), 2.0, accuracy: 1e-9)
+    }
+
+    func testOwnGenreTagWinsOverArtistMajority() {
+        // Nur *leere* Tags werden gefüllt: ein Titel mit eigenem Pop-Tag, dessen Künstler
+        // sonst Dance macht, bleibt Pop — das echte Signal des Titels schlägt die Mehrheit.
+        let anchor = makeFingerprint("anchor", year: 1993, duration: 240, mix: nil, genre: "Pop", artist: "PopAnchor")
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("popByDanceAct", year: 1993, duration: 240, mix: nil, genre: "Pop", artist: "MostlyDance"),
+            makeFingerprint("d1", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "MostlyDance"),
+            makeFingerprint("d2", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "MostlyDance"),
+            makeFingerprint("d3", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "MostlyDance")
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        let distance = neighbors.first { $0.track.path == "popByDanceAct" }?.distance ?? .infinity
+        // Gleiche Pop-Familie wie der Anker → kein Genre-Beitrag, bei sonst gleichen Achsen Distanz 0.
+        XCTAssertEqual(distance, 0, accuracy: 1e-9)
+    }
+
+    func testArtistGenreConflictStaysNeutral() {
+        // Widerspruch ⇒ neutral: ein Künstler mit 50/50 Dance/Pop hat keine echte
+        // Mehrheit, sein leerer Titel bleibt neutral. Gegenprobe: der leere Titel eines
+        // rein Dance-Künstlers bekommt sehr wohl Dance.
+        let anchor = makeFingerprint("anchor", year: 1993, duration: 240, mix: nil, genre: "Pop", artist: "PopAnchor")
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("mixedEmpty", year: 1993, duration: 240, mix: nil, genre: nil, artist: "MixedAct"),
+            makeFingerprint("pureEmpty", year: 1993, duration: 240, mix: nil, genre: nil, artist: "PureDance"),
+            makeFingerprint("m1", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "MixedAct"),
+            makeFingerprint("m2", year: 1993, duration: 240, mix: nil, genre: "Pop", artist: "MixedAct"),
+            makeFingerprint("p1", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "PureDance"),
+            makeFingerprint("p2", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "PureDance")
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        func distance(_ path: String) -> Double {
+            neighbors.first { $0.track.path == path }?.distance ?? .infinity
+        }
+        XCTAssertEqual(distance("mixedEmpty"), 0, accuracy: 1e-9, "50/50-Künstler bleibt neutral")
+        XCTAssertGreaterThan(distance("pureEmpty"), distance("mixedEmpty"), "rein Dance-Künstler füllt Dance")
+    }
+
+    func testArtistMajorityAggregatesOverMBID() {
+        // Namensvarianten mit derselben Künstler-MBID werden zusammengeführt: der leer
+        // getaggte Titel unter abweichendem Namen bekommt Dance aus der gemeinsamen MBID
+        // (das „M.C. Sar & The Real McCoy" ↔ „Real McCoy"-Muster). Über den Namen allein
+        // bliebe er neutral.
+        let anchor = makeFingerprint("anchor", year: 1993, duration: 240, mix: nil, genre: "Pop", artist: "PopAnchor")
+        let dataset = FingerprintDataset(tracks: [
+            anchor,
+            makeFingerprint("variantEmpty", year: 1993, duration: 240, mix: nil, genre: nil,
+                            artist: "M.C. Sar & The Real McCoy", artistId: "mbid-rm"),
+            makeFingerprint("rm1", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "Real McCoy", artistId: "mbid-rm"),
+            makeFingerprint("rm2", year: 1993, duration: 240, mix: nil, genre: "Dance", artist: "Real McCoy", artistId: "mbid-rm")
+        ])
+        let neighbors = dataset.neighbors(of: anchor, limit: 10)
+        let distance = neighbors.first { $0.track.path == "variantEmpty" }?.distance ?? .infinity
+        XCTAssertEqual(distance, 2.0, accuracy: 1e-9, "MBID führt Namensvarianten zusammen und füllt Dance")
     }
 }
