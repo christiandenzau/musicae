@@ -30,6 +30,12 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
     public var spectralBrightnessHz: Double
     public var bassRatio: Double
     public var mixVersion: String?
+    /// Getaggtes Genre (roh, denormalisiert aus `tracks.genre`). **Transient:**
+    /// bewusst nicht in `CodingKeys` — wird nicht in `track_fingerprints`
+    /// persistiert, sondern in der App beim Join geladen und trägt die weiche
+    /// Genre-Familien-Achse (Phase 5b, `GenreFamily`). Keine Re-Analyse nötig,
+    /// das Tag steht schon in der DB; das Fingerprint-Tool lässt es leer.
+    public var genre: String? = nil
     public var analyzedAt: Date
 
     public static let databaseTableName = "track_fingerprints"
@@ -63,6 +69,7 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
         bpmConfidence: Double?,
         axes: AudioAxes,
         mixVersion: String?,
+        genre: String? = nil,
         analyzedAt: Date
     ) {
         self.path = path
@@ -78,6 +85,7 @@ public struct TrackFingerprint: Codable, Equatable, Sendable, FetchableRecord, P
         self.spectralBrightnessHz = axes.spectralBrightnessHz
         self.bassRatio = axes.bassRatio
         self.mixVersion = mixVersion
+        self.genre = genre
         self.analyzedAt = analyzedAt
     }
 }

@@ -167,8 +167,11 @@ public final class FingerprintDataset {
     /// Klangfarbe, Lautheit, jeweils **getrennt**, damit sich stiltrennende Unterschiede
     /// addieren statt sich in einer gemittelten „Energie" auszugleichen), dazu die
     /// **Beat-Klarheit** (Confidence: klarer Four-on-the-Floor vs. komplexer Rhythmus),
-    /// zuletzt Mix-Art und Länge. Alles datensatz-relativ normiert und rein akustisch
-    /// (tag-unabhängig — Genre-Tags in Compilations sind oft pauschal oder leer).
+    /// dann Mix-Art und Länge, zuletzt die **Genre-Familie** als bewusst *weiches*
+    /// Tag-Signal (Phase 5b). Die akustischen Achsen sind datensatz-relativ normiert
+    /// und tag-unabhängig; die Genre-Familie kommt als grobe Neigung hinzu und zählt
+    /// **neutral**, wo das Tag fehlt oder uneindeutig ist (Genre-Tags in Compilations
+    /// sind oft pauschal oder leer — darum weich und nie führend).
     private func distance(anchor: TrackFingerprint, to candidate: TrackFingerprint) -> Double {
         var sum = 0.0
 
@@ -205,6 +208,15 @@ public final class FingerprintDataset {
 
         // Länge: 2 Minuten Unterschied spannen die volle Teil-Distanz auf.
         sum += 1.0 * min(1, abs(candidate.durationSeconds - anchor.durationSeconds) / 120.0)
+
+        // Genre-Familie: eine weiche Neigung (Phase 5b). Gleiche Familie kein
+        // Beitrag, andere Familie voller Gewichtsbeitrag — der Trenner gegen den
+        // Tag-Fremdkörper (der Dance-Titel in einer Pop/Rock-Nachbarschaft). Fehlt
+        // die Familie bei einem der beiden oder ist sie „Unknown"/uneindeutig,
+        // zählt sie neutral (kein Beitrag): eine Neigung, kein Urteil.
+        if let anchorFamily = anchor.genreFamily, let candidateFamily = candidate.genreFamily {
+            sum += 2.0 * (candidateFamily == anchorFamily ? 0 : 1)
+        }
 
         return sum
     }
